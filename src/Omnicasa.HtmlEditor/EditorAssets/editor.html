@@ -17,8 +17,12 @@
     position: sticky; top: 0; z-index: 5;
     background: #fafafa;
     border-bottom: 1px solid #e6e6e6;
-    padding: 4px env(safe-area-inset-right) 4px env(safe-area-inset-left);
+    padding: 6px env(safe-area-inset-right) 6px env(safe-area-inset-left);
+    max-height: 40vh; overflow-y: auto;
   }
+  /* Comfortable tap targets on touch screens. */
+  .ql-toolbar.ql-snow button { width: 30px; height: 30px; }
+  .ql-snow .ql-formats { margin-right: 10px; }
   #editor { flex: 1 1 auto; overflow-y: auto; }
   .ql-toolbar.ql-snow { border: none; }
   .ql-container.ql-snow { border: none; font-size: 16px; }
@@ -39,7 +43,21 @@
           <option value="1"></option>
           <option value="2"></option>
           <option value="3"></option>
+          <option value="4"></option>
+          <option value="5"></option>
+          <option value="6"></option>
           <option selected></option>
+        </select>
+        <select class="ql-font">
+          <option selected></option>
+          <option value="serif"></option>
+          <option value="monospace"></option>
+        </select>
+        <select class="ql-size">
+          <option value="small"></option>
+          <option selected></option>
+          <option value="large"></option>
+          <option value="huge"></option>
         </select>
       </span>
       <span class="ql-formats">
@@ -49,15 +67,29 @@
         <button class="ql-strike"></button>
       </span>
       <span class="ql-formats">
-        <button class="ql-list" value="ordered"></button>
-        <button class="ql-list" value="bullet"></button>
+        <select class="ql-color"></select>
+        <select class="ql-background"></select>
       </span>
       <span class="ql-formats">
-        <button class="ql-link"></button>
+        <button class="ql-script" value="sub"></button>
+        <button class="ql-script" value="super"></button>
+      </span>
+      <span class="ql-formats">
+        <button class="ql-list" value="ordered"></button>
+        <button class="ql-list" value="bullet"></button>
+        <button class="ql-list" value="check"></button>
+      </span>
+      <span class="ql-formats">
+        <button class="ql-indent" value="-1"></button>
+        <button class="ql-indent" value="+1"></button>
+        <select class="ql-align"></select>
+      </span>
+      <span class="ql-formats">
         <button class="ql-blockquote"></button>
         <button class="ql-code-block"></button>
       </span>
       <span class="ql-formats">
+        <button class="ql-link"></button>
         <button class="ql-clean"></button>
       </span>
     </div>
