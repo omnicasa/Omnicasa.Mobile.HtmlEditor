@@ -4,6 +4,7 @@ using Android.OS;
 using Android.Views;
 using Android.Webkit;
 using Android.Widget;
+using AndroidX.Core.View;
 using AGraphics = Android.Graphics;
 using Button = Android.Widget.Button;
 using LinearLayout = Android.Widget.LinearLayout;
@@ -52,6 +53,9 @@ internal sealed class EditorActivity : Activity
     {
         base.OnCreate(savedInstanceState);
 
+        // Drive insets ourselves so the bars do not overlap the content (edge-to-edge on Android 15+).
+        WindowCompat.SetDecorFitsSystemWindows(Window!, false);
+
         var options = EditorBridge.Options;
 
         var root = new LinearLayout(this) { Orientation = Orientation.Vertical };
@@ -70,6 +74,9 @@ internal sealed class EditorActivity : Activity
         root.AddView(webView);
 
         SetContentView(root);
+
+        // Pad for the status bar (top) and the navigation bar / keyboard (bottom).
+        ViewCompat.SetOnApplyWindowInsetsListener(root, new SystemBarsInsetsListener());
 
         var html = EditorHtmlBuilder.Build(options);
 
@@ -163,5 +170,22 @@ internal sealed class EditorActivity : Activity
         public JsResultCallback(Action<string?> onValue) => this.onValue = onValue;
 
         public void OnReceiveValue(Java.Lang.Object? value) => onValue(value?.ToString());
+    }
+
+    private sealed class SystemBarsInsetsListener : Java.Lang.Object, IOnApplyWindowInsetsListener
+    {
+        public WindowInsetsCompat? OnApplyWindowInsets(View? v, WindowInsetsCompat? insets)
+        {
+            if (v is null || insets is null)
+            {
+                return insets;
+            }
+
+            var bars = insets.GetInsets(WindowInsetsCompat.Type.SystemBars());
+            var ime = insets.GetInsets(WindowInsetsCompat.Type.Ime());
+            var bottom = System.Math.Max(bars?.Bottom ?? 0, ime?.Bottom ?? 0);
+            v.SetPadding(bars?.Left ?? 0, bars?.Top ?? 0, bars?.Right ?? 0, bottom);
+            return insets;
+        }
     }
 }
