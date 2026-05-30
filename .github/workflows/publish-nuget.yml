@@ -1,0 +1,64 @@
+name: Publish · NuGet
+
+# Runs when a PR is merged (i.e. a push lands on main) and the library source
+# changed. Packs with a date-based version and publishes to NuGet.org.
+# Remove the `paths:` filter to publish on every merge to main.
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'src/**'
+      - '.github/workflows/publish-nuget.yml'
+
+concurrency:
+  group: publish-nuget
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET (pinned by global.json)
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Install MAUI workload
+        run: dotnet workload install maui --skip-manifest-update
+
+      - name: Compute version (yyyy.mm.dd.buildversion)
+        id: ver
+        run: |
+          YEAR=$(date -u +%Y)
+          MONTH=$(( 10#$(date -u +%m) ))
+          DAY=$(( 10#$(date -u +%d) ))
+          VERSION="${YEAR}.${MONTH}.${DAY}.${{ github.run_number }}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Computed package version: $VERSION"
+
+      - name: Test
+        run: >
+          dotnet test tests/Omnicasa.HtmlEditor.Tests/Omnicasa.HtmlEditor.Tests.csproj
+          -c Release --logger "console;verbosity=normal"
+
+      - name: Pack
+        run: >
+          dotnet pack src/Omnicasa.HtmlEditor/Omnicasa.HtmlEditor.csproj
+          -c Release -o artifacts -p:Version=${{ steps.ver.outputs.version }}
+
+      - name: Push to NuGet.org
+        run: >
+          dotnet nuget push "artifacts/*.nupkg"
+          --api-key "${{ secrets.NUGET_API_KEY }}"
+          --source https://api.nuget.org/v3/index.json
+          --skip-duplicate
+
+      - name: Summary
+        run: |
+          echo "### Published \`Omnicasa.HtmlEditor\` v${{ steps.ver.outputs.version }} :rocket:" >> "$GITHUB_STEP_SUMMARY"

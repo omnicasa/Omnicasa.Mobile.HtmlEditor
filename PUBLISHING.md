@@ -130,6 +130,33 @@ Notes:
 
 ---
 
+## Automated publishing (GitHub Actions)
+
+Two workflows live in `.github/workflows/`:
+
+| Workflow | Trigger | What it does |
+|----------|---------|--------------|
+| `pr-build-test.yml` | Pull request → `main` | Builds the library (all TFMs) + sample (Android) and runs the unit tests. |
+| `publish-nuget.yml` | Push/merge to `main` touching `src/**` | Tests, packs with version `yyyy.mm.dd.<run_number>`, and pushes to NuGet.org. |
+
+Both run on **macOS** runners (required because the library multi-targets `net9.0-ios`) and use the
+SDK pinned by `global.json`.
+
+**One-time setup for the publish workflow:**
+
+1. Create the API key on nuget.org (steps 2 above).
+2. In GitHub: **Settings → Secrets and variables → Actions → New repository secret**
+   - Name: `NUGET_API_KEY`
+   - Value: the key.
+
+After that, every merge to `main` that changes `src/**` publishes a new version automatically — no
+manual `dotnet pack`/`push` needed. The very first version still has to satisfy the ID-prefix rules
+in step 7 (so it can be worth doing the first push manually, then letting CI take over).
+
+The version is computed at run time, e.g. a merge on 30 May 2026 as run #7 → `2026.5.30.7`.
+To publish on **every** merge (not only `src/**` changes), delete the `paths:` filter in
+`publish-nuget.yml`.
+
 ## Alternative: GitHub Packages (private feed)
 
 To publish to the org's GitHub Packages feed instead of nuget.org:

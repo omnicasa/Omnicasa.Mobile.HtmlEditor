@@ -1,0 +1,48 @@
+name: PR · Build & Test
+
+# Runs on every pull request targeting main: compiles the library (all target
+# frameworks) and the sample, and runs the unit tests. macOS is required because
+# the library multi-targets net9.0-ios.
+on:
+  pull_request:
+    branches: [ main ]
+
+concurrency:
+  group: pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET (pinned by global.json)
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Install MAUI workload
+        run: dotnet workload install maui --skip-manifest-update
+
+      - name: Restore
+        run: dotnet restore Omnicasa.HtmlEditor.slnx
+
+      - name: Build library (net9.0 · android · ios)
+        run: >
+          dotnet build src/Omnicasa.HtmlEditor/Omnicasa.HtmlEditor.csproj
+          -c Release --no-restore
+
+      - name: Build sample (Android)
+        run: >
+          dotnet build samples/Omnicasa.HtmlEditor.Sample/Omnicasa.HtmlEditor.Sample.csproj
+          -f net9.0-android -c Release --no-restore
+
+      - name: Test
+        run: >
+          dotnet test tests/Omnicasa.HtmlEditor.Tests/Omnicasa.HtmlEditor.Tests.csproj
+          -c Release --no-restore --logger "console;verbosity=normal"
