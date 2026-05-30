@@ -137,7 +137,7 @@ Two workflows live in `.github/workflows/`:
 | Workflow | Trigger | What it does |
 |----------|---------|--------------|
 | `pr-build-test.yml` | Pull request → `main` | Builds the library (all TFMs) + sample (Android) and runs the unit tests. |
-| `publish-nuget.yml` | Push/merge to `main` touching `src/**` | Tests, packs with version `yyyy.mm.dd.<run_number>`, and pushes to NuGet.org. |
+| `publish-nuget.yml` | Push/merge to `main` touching `src/**` | Tests, packs with version `yyyy.mm.dd.<run_number>`, pushes to NuGet.org, and creates a `v<version>` GitHub Release with the `.nupkg` attached. |
 
 Both run on **macOS** runners (required because the library multi-targets `net9.0-ios`) and use the
 SDK pinned by `global.json`.
