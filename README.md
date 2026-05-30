@@ -1,5 +1,8 @@
 # Omnicasa.HtmlEditor
 
+[![NuGet](https://img.shields.io/nuget/v/Omnicasa.HtmlEditor.svg?logo=nuget&label=NuGet)](https://www.nuget.org/packages/Omnicasa.HtmlEditor)
+[![NuGet Downloads](https://img.shields.io/nuget/dt/Omnicasa.HtmlEditor.svg)](https://www.nuget.org/packages/Omnicasa.HtmlEditor)
+
 A tiny **.NET 9 MAUI** library that opens a **native** rich‑text HTML editor page on
 mobile and gives you back the edited HTML. The editor itself is powered by
 [**Quill 2**](https://quilljs.com) (a powerful, MIT‑licensed HTML/JS WYSIWYG editor),
@@ -121,17 +124,6 @@ Every project references [**Omnicasa.Analyzers**](https://www.nuget.org/packages
 the company ruleset, and `TreatWarningsAsErrors`. The library and tests build with **zero warnings**.
 The sample and test projects relax documentation (SA1600) in a local `.editorconfig`, since an app
 and test code are not a published API surface.
-
-## Packaging & publishing
-
-Build the NuGet package (`.nupkg` + `.snupkg`) into `artifacts/`:
-
-```bash
-dotnet pack src/Omnicasa.HtmlEditor/Omnicasa.HtmlEditor.csproj -c Release -o artifacts
-```
-
-For the **first upload to NuGet** (API key, ID-prefix reservation, push, validation), follow the
-step-by-step guide in [`PUBLISHING.md`](PUBLISHING.md).
 
 ## Licensing
 
