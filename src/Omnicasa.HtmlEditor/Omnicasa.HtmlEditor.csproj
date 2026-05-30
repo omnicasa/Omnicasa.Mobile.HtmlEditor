@@ -10,6 +10,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
 
     <RootNamespace>Omnicasa.HtmlEditor</RootNamespace>
     <AssemblyName>Omnicasa.HtmlEditor</AssemblyName>
@@ -22,12 +23,35 @@
     <Title>Omnicasa HtmlEditor for .NET MAUI</Title>
     <Description>A tiny .NET MAUI library that opens a native rich HTML editor (powered by Quill) on iOS and Android with Save / Discard, and returns the edited HTML.</Description>
     <Authors>Omnicasa</Authors>
+    <Company>Omnicasa</Company>
+    <Product>Omnicasa.HtmlEditor</Product>
+    <Copyright>Copyright (c) Omnicasa</Copyright>
     <Version>1.0.0</Version>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageTags>maui;html;editor;wysiwyg;quill;richtext;ios;android</PackageTags>
+    <PackageProjectUrl>https://github.com/omnicasa/Omnicasa.Mobile.HtmlEditor</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/omnicasa/Omnicasa.Mobile.HtmlEditor</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReleaseNotes>Initial release: native Quill-based HTML editor for .NET MAUI (iOS + Android).</PackageReleaseNotes>
+
+    <!-- Build a .snupkg symbols package alongside the .nupkg. -->
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+
+    <!-- Reproducible, deterministic package output. -->
+    <Deterministic>true</Deterministic>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Maui.Controls" Version="9.0.120" />
+  </ItemGroup>
+
+  <!-- Files shipped inside the .nupkg. -->
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\THIRD-PARTY-NOTICES.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
   <ItemGroup>

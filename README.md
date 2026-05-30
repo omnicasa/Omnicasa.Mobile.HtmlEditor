@@ -122,6 +122,17 @@ the company ruleset, and `TreatWarningsAsErrors`. The library and tests build wi
 The sample and test projects relax documentation (SA1600) in a local `.editorconfig`, since an app
 and test code are not a published API surface.
 
+## Packaging & publishing
+
+Build the NuGet package (`.nupkg` + `.snupkg`) into `artifacts/`:
+
+```bash
+dotnet pack src/Omnicasa.HtmlEditor/Omnicasa.HtmlEditor.csproj -c Release -o artifacts
+```
+
+For the **first upload to NuGet** (API key, ID-prefix reservation, push, validation), follow the
+step-by-step guide in [`PUBLISHING.md`](PUBLISHING.md).
+
 ## Licensing
 
 This library is MIT. It bundles Quill 2.0.3 (BSD‑3‑Clause). See `THIRD-PARTY-NOTICES.md`.
