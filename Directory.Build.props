@@ -1,0 +1,17 @@
+<Project>
+
+  <!--
+    Omnicasa coding conventions, applied to every project in the solution.
+    The Omnicasa.Analyzers package brings StyleCop + SonarAnalyzer, its ruleset
+    (Omnicasa.Apps.ruleset) and turns warnings into errors. stylecop.json carries
+    the company naming/documentation settings and must be an AdditionalFile.
+  -->
+  <ItemGroup>
+    <PackageReference Include="Omnicasa.Analyzers" Version="2026.5.29.18" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AdditionalFiles Include="$(MSBuildThisFileDirectory)stylecop.json" Link="stylecop.json" />
+  </ItemGroup>
+
+</Project>

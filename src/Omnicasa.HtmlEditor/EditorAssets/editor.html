@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
+<style>/*__QUILL_CSS__*/</style>
+<style>
+  :root { color-scheme: light dark; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: #ffffff;
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #editor-container { display: flex; flex-direction: column; height: 100%; }
+  #toolbar {
+    position: sticky; top: 0; z-index: 5;
+    background: #fafafa;
+    border-bottom: 1px solid #e6e6e6;
+    padding: 4px env(safe-area-inset-right) 4px env(safe-area-inset-left);
+  }
+  #editor { flex: 1 1 auto; overflow-y: auto; }
+  .ql-toolbar.ql-snow { border: none; }
+  .ql-container.ql-snow { border: none; font-size: 16px; }
+  .ql-editor {
+    min-height: 100%;
+    padding: 16px;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+    -webkit-overflow-scrolling: touch;
+  }
+  .ql-editor.ql-blank::before { font-style: normal; color: #9aa0a6; }
+</style>
+</head>
+<body>
+  <div id="editor-container">
+    <div id="toolbar">
+      <span class="ql-formats">
+        <select class="ql-header">
+          <option value="1"></option>
+          <option value="2"></option>
+          <option value="3"></option>
+          <option selected></option>
+        </select>
+      </span>
+      <span class="ql-formats">
+        <button class="ql-bold"></button>
+        <button class="ql-italic"></button>
+        <button class="ql-underline"></button>
+        <button class="ql-strike"></button>
+      </span>
+      <span class="ql-formats">
+        <button class="ql-list" value="ordered"></button>
+        <button class="ql-list" value="bullet"></button>
+      </span>
+      <span class="ql-formats">
+        <button class="ql-link"></button>
+        <button class="ql-blockquote"></button>
+        <button class="ql-code-block"></button>
+      </span>
+      <span class="ql-formats">
+        <button class="ql-clean"></button>
+      </span>
+    </div>
+    <div id="editor"></div>
+  </div>
+
+  <script>/*__QUILL_JS__*/</script>
+  <script>
+  (function () {
+    var quill = new Quill('#editor', {
+      theme: 'snow',
+      placeholder: '__PLACEHOLDER__',
+      modules: { toolbar: '#toolbar' }
+    });
+
+    // Decode the base64 initial HTML (UTF-8 safe) and paste it in.
+    try {
+      var b64 = '__INITIAL_B64__';
+      if (b64 && b64.length) {
+        var binary = atob(b64);
+        var html = decodeURIComponent(Array.prototype.map.call(binary, function (c) {
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        quill.clipboard.dangerouslyPasteHTML(html);
+        quill.setSelection(quill.getLength(), 0);
+      }
+    } catch (e) { /* ignore malformed initial content */ }
+
+    // Native side calls this to read the current document.
+    window.__getHtml = function () {
+      var html = quill.root.innerHTML;
+      if (html === '<p><br></p>') return '';
+      return html;
+    };
+
+    window.__quill = quill;
+    setTimeout(function () { quill.focus(); }, 150);
+  })();
+  </script>
+</body>
+</html>

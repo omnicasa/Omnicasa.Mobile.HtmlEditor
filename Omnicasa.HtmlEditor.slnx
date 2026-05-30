@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Omnicasa.HtmlEditor/Omnicasa.HtmlEditor.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="samples/Omnicasa.HtmlEditor.Sample/Omnicasa.HtmlEditor.Sample.csproj" />
+    <Project Path="tests/Omnicasa.HtmlEditor.Tests/Omnicasa.HtmlEditor.Tests.csproj" />
+  </Folder>
+</Solution>

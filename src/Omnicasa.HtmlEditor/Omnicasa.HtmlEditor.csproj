@@ -1,0 +1,56 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net9.0;net9.0-android;net9.0-ios</TargetFrameworks>
+    <UseMaui>true</UseMaui>
+    <!-- Pin to a .NET 9 compatible MAUI so the library stays on net9 even when built by a .NET 10 SDK. -->
+    <MauiVersion>9.0.120</MauiVersion>
+    <SingleProject>true</SingleProject>
+    <OutputType>Library</OutputType>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+
+    <RootNamespace>Omnicasa.HtmlEditor</RootNamespace>
+    <AssemblyName>Omnicasa.HtmlEditor</AssemblyName>
+
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">15.0</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">21.0</SupportedOSPlatformVersion>
+
+    <!-- NuGet package metadata -->
+    <PackageId>Omnicasa.HtmlEditor</PackageId>
+    <Title>Omnicasa HtmlEditor for .NET MAUI</Title>
+    <Description>A tiny .NET MAUI library that opens a native rich HTML editor (powered by Quill) on iOS and Android with Save / Discard, and returns the edited HTML.</Description>
+    <Authors>Omnicasa</Authors>
+    <Version>1.0.0</Version>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Maui.Controls" Version="9.0.120" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Omnicasa.HtmlEditor.Tests" />
+  </ItemGroup>
+
+  <!-- Stop MAUI from treating the bundled Quill stylesheet as an app StyleSheet (MauiCss),
+       which would generate code-behind for it. It is purely an embedded resource. -->
+  <ItemGroup>
+    <MauiCss Remove="EditorAssets\quill.snow.css" />
+  </ItemGroup>
+
+  <!-- Editor assets bundled inside the assembly (offline, no CDN). -->
+  <ItemGroup>
+    <EmbeddedResource Include="EditorAssets\editor.html">
+      <LogicalName>editor.html</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="EditorAssets\quill.js">
+      <LogicalName>quill.js</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="EditorAssets\quill.snow.css">
+      <LogicalName>quill.snow.css</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
+</Project>

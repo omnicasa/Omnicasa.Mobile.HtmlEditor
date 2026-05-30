@@ -1,0 +1,6 @@
+# Test code follows the Omnicasa conventions, but documentation (SA1600) and
+# PascalCase method naming (S100) are relaxed: test classes are not public API and
+# Given_When_Then test names are intentionally underscored.
+[*.cs]
+dotnet_diagnostic.SA1600.severity = none
+dotnet_diagnostic.S100.severity = none

@@ -1,0 +1,9 @@
+# The sample app follows the Omnicasa conventions, but XML-doc requirements (SA1600)
+# are relaxed because an application is not a published API surface.
+[*.cs]
+dotnet_diagnostic.SA1600.severity = none
+
+# Never analyze build-generated code (Resource.designer.cs, *.sg.cs, etc.).
+[{**/obj/**.cs,**/*.g.cs,**/*.designer.cs,**/*.sg.cs}]
+generated_code = true
+dotnet_diagnostic.MOBILE_RULE_0001.severity = none
