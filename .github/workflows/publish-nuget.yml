@@ -8,6 +8,7 @@ on:
     branches: [ main ]
     paths:
       - 'src/**'
+  workflow_dispatch:   # allow manual runs from the Actions tab / gh CLI
 
 concurrency:
   group: publish-nuget
