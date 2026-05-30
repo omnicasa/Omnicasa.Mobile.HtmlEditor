@@ -1,4 +1,5 @@
-﻿using Foundation;
+﻿using CoreGraphics;
+using Foundation;
 using UIKit;
 using WebKit;
 
@@ -32,6 +33,10 @@ internal sealed class EditorViewController : UIViewController
         Title = options.Title;
         View!.BackgroundColor = UIColor.SystemBackground;
 
+        // Keep the web view below the navigation bar instead of under it.
+        EdgesForExtendedLayout = UIRectEdge.None;
+        ExtendedLayoutIncludesOpaqueBars = false;
+
         NavigationItem.LeftBarButtonItem = new UIBarButtonItem(
             options.DiscardText, UIBarButtonItemStyle.Plain, (_, _) => Finish(HtmlEditorResult.Discard()));
         NavigationItem.RightBarButtonItem = new UIBarButtonItem(
@@ -42,14 +47,26 @@ internal sealed class EditorViewController : UIViewController
             DefaultWebpagePreferences = new WKWebpagePreferences { AllowsContentJavaScript = true },
         };
 
-        webView = new WKWebView(View!.Bounds, config)
+        webView = new WKWebView(CGRect.Empty, config)
         {
-            AutoresizingMask = UIViewAutoresizing.FlexibleWidth | UIViewAutoresizing.FlexibleHeight,
             Opaque = false,
             BackgroundColor = UIColor.SystemBackground,
+            TranslatesAutoresizingMaskIntoConstraints = false,
         };
         webView.ScrollView.KeyboardDismissMode = UIScrollViewKeyboardDismissMode.Interactive;
+        webView.ScrollView.ContentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentBehavior.Never;
         View!.AddSubview(webView);
+
+        // Pin to the safe area on top/sides and to the keyboard guide on the bottom, so the editor
+        // shrinks above the keyboard (the toolbar stays put) instead of being pushed off-screen.
+        var constraints = new[]
+        {
+            webView.TopAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.TopAnchor),
+            webView.LeadingAnchor.ConstraintEqualTo(View.LeadingAnchor),
+            webView.TrailingAnchor.ConstraintEqualTo(View.TrailingAnchor),
+            webView.BottomAnchor.ConstraintEqualTo(View.KeyboardLayoutGuide.TopAnchor),
+        };
+        NSLayoutConstraint.ActivateConstraints(constraints);
 
         var html = EditorHtmlBuilder.Build(options);
         webView.LoadHtmlString(new NSString(html), NSBundle.MainBundle.BundleUrl);
