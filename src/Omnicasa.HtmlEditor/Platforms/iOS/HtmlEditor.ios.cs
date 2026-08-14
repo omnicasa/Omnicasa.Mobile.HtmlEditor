@@ -18,6 +18,10 @@ public static partial class HtmlEditor
             var nav = new UINavigationController(editor)
             {
                 ModalPresentationStyle = UIModalPresentationStyle.FullScreen,
+
+                // The bar belongs to this controller, so the light appearance has to be forced
+                // here too — the page's own view style does not reach it.
+                OverrideUserInterfaceStyle = UIUserInterfaceStyle.Light,
             };
             presenter.PresentViewController(nav, true, null);
         }

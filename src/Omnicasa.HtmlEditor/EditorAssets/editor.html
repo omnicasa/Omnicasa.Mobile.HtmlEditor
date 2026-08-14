@@ -9,37 +9,270 @@
   html, body {
     margin: 0; padding: 0; height: 100%;
     background: #ffffff;
-    overflow: hidden;                 /* only #editor scrolls; toolbar stays fixed */
+    overflow: hidden;                 /* only #editor scrolls; toolbar stays put */
     overscroll-behavior: none;
     -webkit-text-size-adjust: 100%;
     -webkit-tap-highlight-color: transparent;
+    /* The page's own chrome — without this the panel came out in Times, because nothing declared
+       a family and the UA default is serif. The system stack makes the sheet read as native:
+       San Francisco on iOS, Roboto on Android. */
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                 "Helvetica Neue", Helvetica, Arial, sans-serif;
   }
-  #editor-container { display: flex; flex-direction: column; height: 100%; }
+  /* Form controls do not inherit the family on their own; they default to Arial, which is what
+     split the picker between two fonts — Times headings over Arial rows. */
+  input, button, textarea, select { font-family: inherit; }
+  /* Scoped to the bar on purpose: the editor keeps Quill's own font, which is what the Font
+     picker changes, so the message must not be dragged along with the chrome. */
+  #toolbar, #toolbar .ql-picker { font-family: inherit; }
+  :root {
+    --bar-height: 52px;
+    --bar-inset: 8px;
+    --safe-bottom: env(safe-area-inset-bottom);
+    --tint: #0a66ff;
+    --tint-fill: rgba(10, 102, 255, 0.12);
+  }
+
+  /* Everything is stacked, not stacked in flow: the bar floats OVER the message so the glass has
+     something to refract — a bar in flow would only ever blur the page's own white. */
+  #editor-container { position: relative; height: 100%; }
+
+  /* The toolbar rides the keyboard: the host sizes this web view to the space above the keyboard,
+     so a bar pinned to the bottom lands on the keys, with the Insert field button that starts it
+     in reach of the thumb already typing.
+     ONE row that scrolls sideways, so it costs the message a single line instead of the four it
+     wrapped to. Its menus escape the scroller from JS (see liftPicker) — a scroll container clips
+     them in both directions. */
   #toolbar {
-    position: sticky; top: 0; z-index: 5;
-    background: #fafafa;
-    border-bottom: 1px solid #e6e6e6;
-    padding: 6px env(safe-area-inset-right) 6px env(safe-area-inset-left);
+    position: absolute; z-index: 20;
+    left: var(--bar-inset); right: var(--bar-inset);
+    bottom: calc(var(--bar-inset) + var(--safe-bottom));
+    height: var(--bar-height);
+    display: flex; align-items: center; flex-wrap: nowrap;
+    /* No -webkit-overflow-scrolling: it is a no-op on iOS 13+ and it promotes this bar to its
+       own compositing layer, which on WebKit swallows anything positioned out of it. */
+    overflow-x: auto; overflow-y: hidden;
+    scrollbar-width: none;
+    padding: 0 10px;
+    border: 0.5px solid rgba(255, 255, 255, 0.7);
+    border-radius: calc(var(--bar-height) / 2);
+    background: rgba(252, 252, 253, 0.72);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    backdrop-filter: blur(24px) saturate(180%);
+    /* Lift, plus the hairline of light along the top edge that reads as a glass bevel. */
+    box-shadow:
+      0 8px 28px rgba(0, 0, 0, 0.13),
+      0 1px 0 rgba(255, 255, 255, 0.6) inset;
+  }
+  /* Where the blur is unsupported the same bar has to stand on colour alone. */
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    #toolbar { background: rgba(250, 250, 252, 0.97); }
+  }
+  /* Separates the Insert field action from the formatting tools, like the divider in the app. */
+  #tag-formats {
+    border-right: 1px solid rgba(60, 60, 67, 0.14);
+    padding-right: 10px;
+  }
+  #toolbar::-webkit-scrollbar { display: none; }
+  #toolbar .ql-formats { flex: 0 0 auto; }
+
+  /* Where an open picker is parked while the toolbar holds its place (see liftPicker). The host
+     has to carry the toolbar's classes for Quill's rules to keep matching, so its own box has to
+     be flattened — the toolbar's padding would offset the picker from the spot it was lifted
+     from, and the label would visibly jump. */
+  .ql-toolbar.ql-snow.oc-picker-host { padding: 0; border: none; background: transparent; }
+  /* Menu opens UPWARD, because below the bar is the keyboard. Matched at the same specificity as
+     Quill's own `top: 100%` rule and declared after it. */
+  .oc-picker-host .ql-picker.ql-expanded .ql-picker-options {
+    top: auto; bottom: 100%;
+    margin-top: 0; margin-bottom: -1px;
     max-height: 40vh; overflow-y: auto;
   }
   /* Comfortable tap targets on touch screens. */
   .ql-toolbar.ql-snow button { width: 30px; height: 30px; }
   .ql-snow .ql-formats { margin-right: 10px; }
-  #editor { flex: 1 1 auto; overflow-y: auto; }
+
+  /* The editor and the tag picker share this area; both run full height, under the floating bar. */
+  #editor-area { position: absolute; inset: 0; }
+  #editor { position: absolute; inset: 0; overflow-y: auto; }
   .ql-toolbar.ql-snow { border: none; }
   .ql-container.ql-snow { border: none; font-size: 16px; }
   .ql-editor {
     min-height: 100%;
     padding: 16px;
-    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+    /* Clears the floating bar, so the last line can still be scrolled out from under it. */
+    padding-bottom: calc(16px + var(--bar-height) + var(--bar-inset) * 2 + var(--safe-bottom));
     -webkit-overflow-scrolling: touch;
   }
   .ql-editor.ql-blank::before { font-style: normal; color: #9aa0a6; }
+
+  /* Insert-tag button: a word, not a glyph, so it reads as an action. */
+  .ql-toolbar.ql-snow button.ql-inserttag {
+    width: auto; height: 34px; padding: 0 12px;
+    font-size: 13px; font-weight: 600;
+    color: var(--tint);
+    border-radius: 17px;
+    background: var(--tint-fill);
+  }
+  .ql-toolbar.ql-snow button.ql-inserttag:active { background: rgba(10, 102, 255, 0.22); }
+
+  /* Caller actions: same capsule as Insert field, in the neutral fill so the tinted one stays
+     the primary of the bar. */
+  .ql-toolbar.ql-snow button.oc-action {
+    position: relative;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    width: auto; height: 34px; padding: 0 12px;
+    font-size: 13px; font-weight: 600;
+    color: #1a1a1a;
+    border-radius: 17px;
+    background: rgba(118, 118, 128, 0.12);
+  }
+  /* Icon-only: a circle, the shape a bar of icons wants. */
+  .ql-toolbar.ql-snow button.oc-action.is-icon { width: 34px; padding: 0; }
+  .ql-toolbar.ql-snow button.oc-action svg {
+    width: 17px; height: 17px;
+    /* The icon follows the button, so `currentColor` in the caller's svg just works. */
+    color: inherit;
+    flex: 0 0 auto;
+  }
+  .ql-toolbar.ql-snow button.oc-action:active { background: rgba(118, 118, 128, 0.22); }
+  /* While one action runs the whole bar is inert — the handler is working on this document, and
+     a second edit landing underneath it would be applied to text that no longer exists. */
+  #toolbar.is-busy { pointer-events: none; }
+  #toolbar.is-busy button.oc-action.is-running > * { visibility: hidden; }
+  #toolbar.is-busy button.oc-action:not(.is-running) { opacity: 0.4; }
+  #toolbar.is-busy button.oc-action.is-running::after {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 15px; height: 15px;
+    margin: -7.5px 0 0 -7.5px;
+    border: 2px solid rgba(60, 60, 67, 0.25);
+    border-top-color: #1a1a1a;
+    border-radius: 50%;
+    animation: oc-spin 0.7s linear infinite;
+  }
+  @keyframes oc-spin { to { transform: rotate(360deg); } }
+
+  /* An inserted tag: one atomic chip carrying its label, never its raw syntax. */
+  .ql-editor span.oc-tag {
+    display: inline-block;
+    padding: 1px 9px;
+    margin: 0 1px;
+    border-radius: 999px;
+    background: var(--tint-fill);
+    color: var(--tint);
+    font-size: 0.92em;
+    font-weight: 500;
+    line-height: 1.5;
+    white-space: nowrap;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* Tap-outside to close. Transparent, and it must not take focus — closing the picker may
+     never cost the keyboard. */
+  #tag-backdrop { position: absolute; inset: 0; z-index: 9; display: none; }
+  #tag-backdrop.open { display: block; }
+
+  /* A card resting on the bar it belongs to, which is itself resting on the keyboard — so the
+     list opens right where the thumb already is, and the message stays readable above it.
+     Deliberately NOT the bar's glass: over a light editor, glass washes a dense list of small
+     labels out to nearly nothing, and a menu has to be readable before it is pretty. It gets the
+     elevated surface instead — near-opaque, blurred only enough to belong to the same material. */
+  #tag-panel {
+    position: absolute; z-index: 10;
+    left: var(--bar-inset); right: var(--bar-inset);
+    bottom: calc(var(--bar-inset) * 2 + var(--safe-bottom) + var(--bar-height));
+    display: none; flex-direction: column;
+    /* Never taller than the space above the keyboard minus a few lines of the message: the
+       point of inserting at the caret is being able to see where it lands. */
+    max-height: min(340px, calc(100% - 96px - var(--bar-height)));
+    background: rgba(255, 255, 255, 0.94);
+    -webkit-backdrop-filter: blur(30px) saturate(180%);
+    backdrop-filter: blur(30px) saturate(180%);
+    border: 0.5px solid rgba(60, 60, 67, 0.12);
+    border-radius: 22px;
+    box-shadow:
+      0 12px 40px rgba(0, 0, 0, 0.18),
+      0 1px 0 rgba(255, 255, 255, 0.8) inset;
+    overflow: hidden;
+  }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    #tag-panel { background: #ffffff; }
+  }
+  #tag-panel.open { display: flex; }
+  #tag-head {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 10px 4px;
+  }
+  #tag-title { flex: 1 1 auto; font-size: 14px; font-weight: 600; color: #1a1a1a; }
+  #tag-close {
+    display: flex; align-items: center; justify-content: center;
+    flex: 0 0 auto; width: 30px; height: 30px;
+    margin: -4px -4px -4px 0;          /* grows the tap target without moving the icon */
+    padding: 0; border: none; border-radius: 8px;
+    background: transparent; color: #6b7280; cursor: pointer;
+  }
+  #tag-close:active { background: #f2f3f5; }
+  #tag-search {
+    -webkit-appearance: none; appearance: none;
+    margin: 4px 10px 6px;
+    padding: 0 12px; height: 36px;
+    font-size: 15px; color: #1a1a1a;
+    border: none; border-radius: 12px;
+    /* The system fill: a tint of the surface rather than a flat grey, so it sits in the glass. */
+    background: rgba(118, 118, 128, 0.12);
+  }
+  #tag-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 4px 8px 10px; -webkit-overflow-scrolling: touch; }
+  .tag-group {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.5px;
+    text-transform: uppercase; color: #4b5563;
+    padding: 12px 8px 4px;
+  }
+  .tag-row {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    padding: 10px 8px;
+    border: none; border-radius: 12px;
+    background: transparent;
+    font-size: 15px; text-align: left; cursor: pointer;
+  }
+  .tag-row:active { background: var(--tint-fill); }
+  .tag-row-label { flex: 1 1 auto; font-weight: 600; color: #1a1a1a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* The raw token, so two same-named tags from different groups can be told apart. */
+  .tag-row-value { flex: 0 1 auto; max-width: 42%; font-size: 11px; color: #9aa0a6; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #tag-empty { display: none; padding: 24px; text-align: center; font-size: 14px; color: #6b7280; }
+  #tag-empty.open { display: block; }
 </style>
 </head>
 <body>
   <div id="editor-container">
+    <div id="editor-area">
+      <div id="editor"></div>
+      <div id="tag-backdrop"></div>
+      <div id="tag-panel">
+        <div id="tag-head">
+          <div id="tag-title"></div>
+          <!-- Drawn, not typed: the ✕ character needs a font WebKit does not always have, and
+               a missing glyph leaves the button looking empty. -->
+          <button type="button" id="tag-close" aria-label="Close">
+            <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" focusable="false">
+              <path d="M3.5 3.5 L12.5 12.5 M12.5 3.5 L3.5 12.5"
+                    fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+        <input type="search" id="tag-search" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+        <div id="tag-list"></div>
+        <div id="tag-empty"></div>
+      </div>
+    </div>
     <div id="toolbar">
+      <span class="ql-formats" id="tag-formats">
+        <button type="button" class="ql-inserttag" id="tag-button"></button>
+      </span>
+      <!-- Caller-supplied actions are rendered in here at start-up. -->
+      <span class="ql-formats" id="action-formats"></span>
       <span class="ql-formats">
         <select class="ql-header">
           <option value="1"></option>
@@ -95,37 +328,577 @@
         <button class="ql-clean"></button>
       </span>
     </div>
-    <div id="editor"></div>
   </div>
 
   <script>/*__QUILL_JS__*/</script>
   <script>
   (function () {
+    // ---------------------------------------------------------------- config
+
+    function decodeB64(b64) {
+      if (!b64 || !b64.length) return '';
+      var binary = atob(b64);
+      return decodeURIComponent(Array.prototype.map.call(binary, function (c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+    }
+
+    var config = { tags: [] };
+    try { config = JSON.parse(decodeB64('__TAGS_B64__')) || config; } catch (e) { /* no tags */ }
+    var tags = config.tags || [];
+
+    var panel = document.getElementById('tag-panel');
+    var backdrop = document.getElementById('tag-backdrop');
+    var list = document.getElementById('tag-list');
+    var empty = document.getElementById('tag-empty');
+    var search = document.getElementById('tag-search');
+    var button = document.getElementById('tag-button');
+
+    // No tags means no feature: the button goes away before Quill ever sees it, so an editor
+    // opened without tags is exactly the editor that shipped before.
+    if (!tags.length) {
+      var group = document.getElementById('tag-formats');
+      if (group && group.parentNode) group.parentNode.removeChild(group);
+    } else {
+      button.textContent = config.buttonText || '';
+      document.getElementById('tag-title').textContent = config.title || '';
+      search.placeholder = config.searchPlaceholder || '';
+      empty.textContent = config.emptyText || '';
+    }
+
+    /**
+     * Turns a caller's svg markup into an element, or null if it is not usable.
+     *
+     * Parsed rather than assigned as innerHTML: an icon is a shape, and nothing that can run
+     * belongs in one. Scripts, foreign content and every event-handler attribute are dropped —
+     * the caller is the app itself, but an icon is still the one place markup crosses in.
+     */
+    function actionIcon(markup) {
+      if (!markup) return null;
+
+      // Parsed as XML, so the svg namespace has to be declared or every element comes back in no
+      // namespace at all: it still answers to querySelector('svg') and still takes a CSS box, but
+      // it is not an SVG and paints nothing. Callers should not have to know that.
+      if (markup.indexOf('xmlns') === -1) {
+        markup = markup.replace(/^\s*<svg\b/i, '<svg xmlns="http://www.w3.org/2000/svg"');
+      }
+
+      var parsed;
+      try {
+        parsed = new DOMParser().parseFromString(markup, 'image/svg+xml');
+      } catch (e) {
+        return null;
+      }
+
+      var svg = parsed.documentElement;
+      if (!svg || svg.nodeName.toLowerCase() !== 'svg') return null;
+      if (svg.namespaceURI !== 'http://www.w3.org/2000/svg') return null;
+      if (parsed.getElementsByTagName('parsererror').length) return null;
+
+      var executable = svg.querySelectorAll('script, foreignObject, a, use, image');
+      for (var i = 0; i < executable.length; i++) {
+        executable[i].parentNode.removeChild(executable[i]);
+      }
+
+      var nodes = svg.querySelectorAll('*');
+      strip(svg);
+      for (var j = 0; j < nodes.length; j++) strip(nodes[j]);
+
+      function strip(node) {
+        var attributes = node.attributes;
+        for (var k = attributes.length - 1; k >= 0; k--) {
+          var name = attributes[k].name.toLowerCase();
+          var value = attributes[k].value.toLowerCase();
+          if (name.indexOf('on') === 0 || value.indexOf('javascript:') === 0) {
+            node.removeAttribute(attributes[k].name);
+          }
+        }
+      }
+
+      // The editor owns the size; the icon owns its shape.
+      svg.removeAttribute('width');
+      svg.removeAttribute('height');
+      svg.setAttribute('aria-hidden', 'true');
+      svg.setAttribute('focusable', 'false');
+      return document.importNode(svg, true);
+    }
+
+    // Caller actions — Translate, Clear, whatever the app can do to the text. Built from the
+    // config so the library never has to know what any of them mean.
+    var actions = config.actions || [];
+    var actionFormats = document.getElementById('action-formats');
+    if (!actions.length) {
+      actionFormats.parentNode.removeChild(actionFormats);
+    } else {
+      actions.forEach(function (action) {
+        var actionButton = document.createElement('button');
+        actionButton.type = 'button';
+        actionButton.setAttribute('data-action', action.id);
+        // The label names the action even when only the icon is drawn.
+        actionButton.setAttribute('aria-label', action.label);
+
+        var icon = actionIcon(action.icon);
+        if (icon) actionButton.appendChild(icon);
+
+        if (!icon || !action.iconOnly) {
+          var text = document.createElement('span');
+          // textContent, not innerHTML: the label is the caller's text, not markup.
+          text.textContent = action.label;
+          actionButton.appendChild(text);
+        }
+
+        actionButton.className = icon && action.iconOnly ? 'oc-action is-icon' : 'oc-action';
+        actionButton.addEventListener('click', function () { postAction(action.id); });
+        actionFormats.appendChild(actionButton);
+      });
+    }
+
+    // ------------------------------------------------------------ chip blot
+
+    var Delta = Quill.import('delta');
+    var Embed = Quill.import('blots/embed');
+
+    // An embed, not an inline format: the chip must delete as ONE unit and must never be
+    // editable character by character — a half-deleted tag is a tag the server cannot resolve.
+    class TagBlot extends Embed {
+      static create(data) {
+        var node = super.create();
+        var value = data || {};
+        var text = value.text || '';
+        node.setAttribute('data-tag', text);
+        node.setAttribute('data-label', value.label || text);
+        node.textContent = value.label || text;
+        return node;
+      }
+
+      static value(node) {
+        return {
+          text: node.getAttribute('data-tag') || '',
+          label: node.getAttribute('data-label') || '',
+        };
+      }
+    }
+
+    TagBlot.blotName = 'oc-tag';
+    TagBlot.tagName = 'span';
+    TagBlot.className = 'oc-tag';
+    Quill.register(TagBlot);
+
+    // ---------------------------------------------------------------- quill
+
     var quill = new Quill('#editor', {
       theme: 'snow',
       placeholder: '__PLACEHOLDER__',
-      modules: { toolbar: '#toolbar' }
+      modules: {
+        toolbar: {
+          container: '#toolbar',
+          handlers: { inserttag: function () { togglePanel(); } },
+        },
+      },
     });
 
-    // Decode the base64 initial HTML (UTF-8 safe) and paste it in.
+    // The last caret the editor reported. Opening the picker blurs the editor, which collapses
+    // the native selection — without this every tag would land at the end of the document.
+    var lastRange = null;
+    quill.on('selection-change', function (range) {
+      if (range) lastRange = range;
+    });
+
+    // ---------------------------------------------------- load initial value
+
+    function escapeRe(value) {
+      return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    var byText = {};
+    var texts = [];
+    tags.forEach(function (tag) {
+      if (!tag.text) return;
+      byText[tag.text] = tag;
+      texts.push(tag.text);
+    });
+    // Longest first, so a tag that is a prefix of another one does not win the match.
+    texts.sort(function (a, b) { return b.length - a.length; });
+    var tagPattern = texts.length ? texts.map(escapeRe).join('|') : null;
+
+    /**
+     * Turns the known tags in a parsed document into chips.
+     *
+     * Deliberately over the DELTA and not over the HTML: a regex on the raw markup also matches
+     * a tag sitting inside an attribute (`<a href="[*Link*]">`), and rewriting that corrupts the
+     * document. By the time we see a delta the parser has already told text from markup.
+     */
+    function chipify(delta) {
+      if (!tagPattern) return delta;
+
+      var out = new Delta();
+      (delta.ops || []).forEach(function (op) {
+        if (typeof op.insert !== 'string') {
+          out.push(op);
+          return;
+        }
+
+        var text = op.insert;
+        var re = new RegExp(tagPattern, 'g');
+        var last = 0;
+        var match;
+        while ((match = re.exec(text)) !== null) {
+          if (match.index > last) out.insert(text.slice(last, match.index), op.attributes);
+          var tag = byText[match[0]];
+          out.insert({ 'oc-tag': { text: match[0], label: tag ? tag.label : match[0] } }, op.attributes);
+          last = match.index + match[0].length;
+        }
+
+        if (last < text.length) out.insert(text.slice(last), op.attributes);
+      });
+
+      return out;
+    }
+
+    /** Replaces the whole document, tags becoming chips again on the way in. */
+    function setDocument(html, source) {
+      quill.setContents(chipify(quill.clipboard.convert({ html: html || '' })), source);
+      quill.setSelection(quill.getLength(), 0, source);
+    }
+
+    /** Inserts html at the caret, replacing the selection if there is one. */
+    function insertDocument(html) {
+      var end = Math.max(quill.getLength() - 1, 0);
+      var range = quill.getSelection() || lastRange || { index: end, length: 0 };
+      var index = Math.min(range.index, end);
+
+      if (range.length) quill.deleteText(index, range.length, Quill.sources.USER);
+
+      var delta = chipify(quill.clipboard.convert({ html: html || '' }));
+      quill.updateContents(new Delta().retain(index).concat(delta), Quill.sources.USER);
+      quill.setSelection(index + delta.length(), 0, Quill.sources.USER);
+    }
+
     try {
-      var b64 = '__INITIAL_B64__';
-      if (b64 && b64.length) {
-        var binary = atob(b64);
-        var html = decodeURIComponent(Array.prototype.map.call(binary, function (c) {
-          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-        }).join(''));
-        quill.clipboard.dangerouslyPasteHTML(html);
-        quill.setSelection(quill.getLength(), 0);
-      }
+      var initialHtml = decodeB64('__INITIAL_B64__');
+      if (initialHtml) setDocument(initialHtml, Quill.sources.SILENT);
     } catch (e) { /* ignore malformed initial content */ }
 
-    // Native side calls this to read the current document.
-    window.__getHtml = function () {
-      var html = quill.root.innerHTML;
-      if (html === '<p><br></p>') return '';
-      return html;
+    // --------------------------------------------------------- picker panel
+
+    function rows(query) {
+      var q = (query || '').trim().toLowerCase();
+      var seen = {};
+      var out = [];
+      tags.forEach(function (tag) {
+        if (q) {
+          var hay = ((tag.label || '') + ' ' + (tag.value || '')).toLowerCase();
+          if (hay.indexOf(q) === -1) return;
+        }
+
+        var group = tag.group || '';
+        if (group && !seen[group]) {
+          seen[group] = true;
+          out.push({ group: group });
+        }
+
+        out.push({ tag: tag });
+      });
+      return out;
+    }
+
+    function renderList(query) {
+      list.textContent = '';
+      var items = rows(query);
+      empty.className = items.length ? '' : 'open';
+
+      items.forEach(function (item) {
+        if (item.group) {
+          var heading = document.createElement('div');
+          heading.className = 'tag-group';
+          heading.textContent = item.group;
+          list.appendChild(heading);
+          return;
+        }
+
+        var row = document.createElement('button');
+        row.type = 'button';
+        row.className = 'tag-row';
+
+        var label = document.createElement('span');
+        label.className = 'tag-row-label';
+        label.textContent = item.tag.label || item.tag.text;
+        row.appendChild(label);
+
+        var value = document.createElement('span');
+        value.className = 'tag-row-value';
+        value.textContent = item.tag.text;
+        row.appendChild(value);
+
+        row.addEventListener('click', function () { pick(item.tag); });
+        list.appendChild(row);
+      });
+    }
+
+    function openPanel() {
+      lastRange = quill.getSelection() || lastRange;
+      search.value = '';
+      renderList('');
+      panel.className = 'open';
+      backdrop.className = 'open';
+    }
+
+    function closePanel() {
+      var searching = document.activeElement === search;
+      panel.className = '';
+      backdrop.className = '';
+
+      // The search box lives inside the panel we just hid, so whatever focus it held is dropped
+      // and the keyboard goes down with it. Hand the caret back to the editor instead.
+      if (searching) {
+        var range = lastRange || { index: Math.max(quill.getLength() - 1, 0), length: 0 };
+        quill.setSelection(range.index, range.length, Quill.sources.USER);
+      }
+    }
+
+    function togglePanel() {
+      if (panel.className === 'open') closePanel();
+      else openPanel();
+    }
+
+    function pick(tag) {
+      closePanel();
+
+      var end = Math.max(quill.getLength() - 1, 0);
+      var range = lastRange || { index: end, length: 0 };
+      var index = Math.min(range.index, end);
+
+      // The model is updated before anything is focused: insertEmbed does not need the editor to
+      // be first responder, so there is no window where a late focus can move the caret first.
+      if (range.length) quill.deleteText(index, range.length, Quill.sources.USER);
+      quill.insertEmbed(index, 'oc-tag', { text: tag.text, label: tag.label || tag.text }, Quill.sources.USER);
+
+      lastRange = { index: index + 1, length: 0 };
+      quill.setSelection(index + 1, 0, Quill.sources.USER);
+    }
+
+    search.addEventListener('input', function () { renderList(search.value); });
+    document.getElementById('tag-close').addEventListener('click', closePanel);
+    backdrop.addEventListener('click', closePanel);
+
+    /**
+     * Keeps the keyboard up while the toolbar and the picker are used.
+     *
+     * Both of them ride the keyboard, so the keyboard must not move: the host sizes this web view
+     * to the space above it, and dismissing it would resize everything and drop the bar out from
+     * under the finger that is still on its way down. A tap moves focus on mousedown, and focus
+     * is what moves the keyboard — so these refuse the default there and the caret never leaves
+     * the editor. The listeners Quill and the picker rely on still run, and click still fires.
+     *
+     * The search box is the one exception: it is a text field and has to be focusable. Going from
+     * one input to another keeps the keyboard up anyway.
+     */
+    function keepFocus(element) {
+      element.addEventListener('mousedown', function (e) {
+        if (e.target === search) return;
+        e.preventDefault();
+      });
+    }
+
+    var toolbar = document.getElementById('toolbar');
+    keepFocus(toolbar);
+    keepFocus(panel);
+    keepFocus(backdrop);
+
+    // ------------------------------------------------------- toolbar popups
+
+    /*
+     * An open picker is LIFTED OUT of the toolbar, whole.
+     *
+     * The toolbar is a horizontal scroller, and a scroller clips its children in both directions,
+     * so a menu left inside it is simply cut off. Positioning the menu out of the flow does not
+     * help either: WebKit gives a scrolling bar its own compositing layer and clips even fixed
+     * descendants to it. Only moving the element out of that subtree depends on nothing above it.
+     *
+     * The whole picker moves, not just its menu, because Quill's own `Picker.update()` reads
+     * `this.container.querySelector('.ql-picker-options')` on every format change — separate the
+     * two and that throws, on every keystroke that changes the selection. Moving the pair keeps
+     * every Quill internal intact and keeps its CSS matching; a placeholder holds the gap in the
+     * bar, and the picker is pinned over exactly where it was, so nothing appears to move.
+     */
+    var lifted = null;     // { picker, placeholder }
+    var pickerHost = null; // the body-level host it is lifted into
+
+    function hostElement() {
+      if (!pickerHost) {
+        pickerHost = document.createElement('div');
+        // Quill styles pickers as `.ql-toolbar.ql-snow .ql-picker…`, so the host has to look
+        // like the toolbar or the lifted picker loses every rule that shapes it.
+        pickerHost.className = 'ql-snow ql-toolbar oc-picker-host';
+        document.body.appendChild(pickerHost);
+
+        // It is the toolbar, relocated: taps in it must not take focus from the editor either.
+        keepFocus(pickerHost);
+      }
+
+      return pickerHost;
+    }
+
+    function positionLifted() {
+      if (!lifted) return;
+
+      // Read the placeholder, not the stored rect: it travels with the bar when it is scrolled.
+      var rect = lifted.placeholder.getBoundingClientRect();
+      pickerHost.style.cssText =
+        'position: fixed; z-index: 30; left: ' + rect.left + 'px; top: ' + rect.top + 'px;';
+
+      // The menu is left-aligned to its picker, so a wide one near the right edge would open off
+      // screen. Only the menu shifts — the label has to stay exactly where it was drawn.
+      var options = lifted.picker.querySelector('.ql-picker-options');
+      if (!options) return;
+      options.style.left = '0px';
+      var overflow = options.getBoundingClientRect().right - (window.innerWidth - 8);
+      if (overflow > 0) options.style.left = -overflow + 'px';
+    }
+
+    function liftPicker(picker) {
+      if (lifted && lifted.picker !== picker) dropPicker();
+      if (lifted) {
+        positionLifted();
+        return;
+      }
+
+      var rect = picker.getBoundingClientRect();
+      var style = window.getComputedStyle(picker);
+
+      // The placeholder copies the picker's own box, float included: Quill floats its pickers,
+      // and a plain inline-block gap is pushed BEHIND every float on the line — which parked the
+      // hole at the end of the group and slid the rest of the bar leftwards under the menu.
+      var placeholder = document.createElement('span');
+      placeholder.style.cssText =
+        'display: ' + style.display +
+        '; float: ' + style.cssFloat +
+        '; margin: ' + style.margin +
+        '; width: ' + rect.width + 'px' +
+        '; height: ' + rect.height + 'px;';
+      picker.parentNode.insertBefore(placeholder, picker);
+
+      lifted = { picker: picker, placeholder: placeholder };
+      hostElement().appendChild(picker);
+      positionLifted();
+    }
+
+    function dropPicker() {
+      if (!lifted) return;
+
+      var options = lifted.picker.querySelector('.ql-picker-options');
+      if (options) options.style.left = '';
+
+      lifted.placeholder.parentNode.insertBefore(lifted.picker, lifted.placeholder);
+      lifted.placeholder.parentNode.removeChild(lifted.placeholder);
+      lifted = null;
+      pickerHost.removeAttribute('style');
+    }
+
+    // Quill opens and closes its pickers by toggling a class, including on paths we never see
+    // (an outside tap, a selection change), so the class is what we watch. The observer covers
+    // the host too, because that is where the picker lives while it is open.
+    var pickerObserver = new MutationObserver(function (records) {
+      for (var i = 0; i < records.length; i++) {
+        var picker = records[i].target;
+        if (!picker.classList || !picker.classList.contains('ql-picker')) continue;
+        if (picker.classList.contains('ql-expanded')) liftPicker(picker);
+        else if (lifted && lifted.picker === picker) dropPicker();
+      }
+    });
+
+    pickerObserver.observe(toolbar, { attributes: true, attributeFilter: ['class'], subtree: true });
+    pickerObserver.observe(hostElement(), { attributes: true, attributeFilter: ['class'], subtree: true });
+
+    // The lifted picker does not travel with the bar when it is scrolled underneath.
+    toolbar.addEventListener('scroll', positionLifted);
+
+    // --------------------------------------------------------- caller actions
+
+    /**
+     * Marks the bar busy for one action, or clears it when passed nothing.
+     *
+     * The bar goes inert rather than the editor: disabling the editor would drop the keyboard,
+     * and the bar rides the keyboard, so a two-second translation would throw the whole layout
+     * down the screen and back. Typing during an action is therefore still possible — and a
+     * `replace` result does overwrite it, which is the same bargain the app makes elsewhere.
+     */
+    function setBusy(actionId) {
+      var buttons = toolbar.querySelectorAll('button.oc-action');
+      for (var i = 0; i < buttons.length; i++) {
+        // classList, not className: the button may also be carrying is-icon.
+        var running = actionId && buttons[i].getAttribute('data-action') === actionId;
+        if (running) buttons[i].classList.add('is-running');
+        else buttons[i].classList.remove('is-running');
+      }
+
+      if (actionId) toolbar.classList.add('is-busy');
+      else toolbar.classList.remove('is-busy');
+    }
+
+    /** Hands an action to the native side, whichever bridge this platform provides. */
+    function postAction(id) {
+      if (toolbar.classList.contains('is-busy')) return;
+
+      setBusy(id);
+      closePanel();
+
+      var payload = JSON.stringify({ id: id, html: readHtml() });
+      var ios = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.ocAction;
+      if (ios) {
+        ios.postMessage(payload);
+        return;
+      }
+
+      if (window.ocAction && window.ocAction.post) {
+        window.ocAction.post(payload);
+        return;
+      }
+
+      // No bridge — the document is being viewed outside a host. Never leave it spinning.
+      setBusy(null);
+    }
+
+    // The native side calls this with whatever the caller's handler decided.
+    window.__applyAction = function (idB64, kind, htmlB64) {
+      try {
+        var html = decodeB64(htmlB64);
+        if (kind === 'replace') setDocument(html, Quill.sources.USER);
+        else if (kind === 'insert') insertDocument(html);
+      } catch (e) { /* a malformed answer must still release the bar */ }
+
+      setBusy(null);
+      quill.focus();
     };
+
+    // ------------------------------------------------------------- read back
+
+    // The current document, chips written back out as their raw tag text.
+    function readHtml() {
+      var clone = quill.root.cloneNode(true);
+
+      // Chips are scaffolding around a piece of text — the server resolves the raw tag, and an
+      // element it does not know is dropped WITH its content, silently losing the field.
+      var chips = clone.querySelectorAll('span.oc-tag');
+      for (var i = 0; i < chips.length; i++) {
+        var chip = chips[i];
+        chip.parentNode.replaceChild(document.createTextNode(chip.getAttribute('data-tag') || ''), chip);
+      }
+
+      // Quill's own furniture: list bullets/checkboxes and the collaborative cursor.
+      var furniture = clone.querySelectorAll('.ql-ui, .ql-cursor');
+      for (var j = 0; j < furniture.length; j++) {
+        furniture[j].parentNode.removeChild(furniture[j]);
+      }
+
+      // Zero-width guards Quill pads its inline embeds with.
+      var out = clone.innerHTML.replace(/\uFEFF/g, '');
+      if (out === '<p><br></p>') return '';
+      return out;
+    }
+
+    // Native side calls this to read the current document.
+    window.__getHtml = readHtml;
 
     window.__quill = quill;
     setTimeout(function () { quill.focus(); }, 150);

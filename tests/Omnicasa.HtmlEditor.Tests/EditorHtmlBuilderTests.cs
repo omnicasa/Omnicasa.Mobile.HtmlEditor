@@ -58,4 +58,135 @@ public class EditorHtmlBuilderTests
         Assert.Contains("O\\'Brien", html);
         Assert.Contains("\\\"x\\\"", html);
     }
+
+    [Fact]
+    public void Build_ReplacesTagToken()
+    {
+        var html = EditorHtmlBuilder.Build(new HtmlEditorOptions());
+
+        Assert.DoesNotContain("__TAGS_B64__", html);
+    }
+
+    [Fact]
+    public void Build_EncodesTagConfigAsBase64()
+    {
+        var options = new HtmlEditorOptions
+        {
+            Tags =
+            {
+                new HtmlEditorTag
+                {
+                    Label = "Contact name",
+                    Value = "ContactName",
+                    InsertText = "[*ContactName*]",
+                },
+            },
+        };
+        var expected = Convert.ToBase64String(
+            Encoding.UTF8.GetBytes(EditorHtmlBuilder.BuildTagConfig(options)));
+
+        var html = EditorHtmlBuilder.Build(options);
+
+        Assert.Contains(expected, html);
+    }
+
+    [Fact]
+    public void Build_DoesNotInjectRawTagLabels()
+    {
+        // A label is caller-supplied text, so it must never reach the page as source.
+        var html = EditorHtmlBuilder.Build(new HtmlEditorOptions
+        {
+            Tags = { new HtmlEditorTag { Label = "</script><script>alert(2)</script>", Value = "X" } },
+        });
+
+        Assert.DoesNotContain("alert(2)", html);
+    }
+
+    [Fact]
+    public void TagConfig_CarriesLabelsAndStrings()
+    {
+        var json = EditorHtmlBuilder.BuildTagConfig(new HtmlEditorOptions
+        {
+            TagButtonText = "Veld",
+            TagPickerTitle = "Veld invoegen",
+            TagSearchPlaceholder = "Zoeken",
+            TagEmptyText = "Niets",
+            Tags =
+            {
+                new HtmlEditorTag
+                {
+                    Label = "Contact name",
+                    Value = "ContactName",
+                    Group = "Person",
+                    InsertText = "[*ContactName*]",
+                },
+            },
+        });
+
+        Assert.Contains("\"buttonText\":\"Veld\"", json);
+        Assert.Contains("\"title\":\"Veld invoegen\"", json);
+        Assert.Contains("\"searchPlaceholder\":\"Zoeken\"", json);
+        Assert.Contains("\"emptyText\":\"Niets\"", json);
+        Assert.Contains("\"label\":\"Contact name\"", json);
+        Assert.Contains("\"value\":\"ContactName\"", json);
+        Assert.Contains("\"text\":\"[*ContactName*]\"", json);
+        Assert.Contains("\"group\":\"Person\"", json);
+    }
+
+    [Fact]
+    public void TagConfig_WithoutInsertText_FallsBackToValue()
+    {
+        var json = EditorHtmlBuilder.BuildTagConfig(new HtmlEditorOptions
+        {
+            Tags = { new HtmlEditorTag { Label = "Name", Value = "{{name}}" } },
+        });
+
+        Assert.Contains("\"text\":\"{{name}}\"", json);
+    }
+
+    [Fact]
+    public void TagConfig_WithoutLabel_FallsBackToInsertedText()
+    {
+        var json = EditorHtmlBuilder.BuildTagConfig(new HtmlEditorOptions
+        {
+            Tags = { new HtmlEditorTag { Value = "ContactName", InsertText = "[*ContactName*]" } },
+        });
+
+        Assert.Contains("\"label\":\"[*ContactName*]\"", json);
+    }
+
+    [Fact]
+    public void TagConfig_SkipsTagsWithNothingToInsert()
+    {
+        var json = EditorHtmlBuilder.BuildTagConfig(new HtmlEditorOptions
+        {
+            Tags =
+            {
+                new HtmlEditorTag { Label = "Empty" },
+                new HtmlEditorTag { Label = "Real", Value = "R" },
+            },
+        });
+
+        Assert.DoesNotContain("Empty", json);
+        Assert.Contains("Real", json);
+    }
+
+    [Fact]
+    public void TagConfig_EscapesJsonSpecials()
+    {
+        var json = EditorHtmlBuilder.BuildTagConfig(new HtmlEditorOptions
+        {
+            Tags = { new HtmlEditorTag { Label = "He said \"hi\"\\\n", Value = "V" } },
+        });
+
+        Assert.Contains("\"label\":\"He said \\\"hi\\\"\\\\\\n\"", json);
+    }
+
+    [Fact]
+    public void TagConfig_WithNoTags_IsAnEmptyList()
+    {
+        var json = EditorHtmlBuilder.BuildTagConfig(new HtmlEditorOptions());
+
+        Assert.Contains("\"tags\":[]", json);
+    }
 }
