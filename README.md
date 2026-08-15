@@ -3,7 +3,7 @@
 [![NuGet](https://img.shields.io/nuget/v/Omnicasa.HtmlEditor.svg?logo=nuget&label=NuGet)](https://www.nuget.org/packages/Omnicasa.HtmlEditor)
 [![NuGet Downloads](https://img.shields.io/nuget/dt/Omnicasa.HtmlEditor.svg)](https://www.nuget.org/packages/Omnicasa.HtmlEditor)
 
-A tiny **.NET 9 MAUI** library that opens a **native** rich‑text HTML editor page on
+A tiny **.NET 10 MAUI** library that opens a **native** rich‑text HTML editor page on
 mobile and gives you back the edited HTML. The editor itself is powered by
 [**Quill 2**](https://quilljs.com) (a powerful, MIT‑licensed HTML/JS WYSIWYG editor),
 bundled **offline** inside the assembly — no CDN, no internet required.
@@ -12,16 +12,16 @@ bundled **offline** inside the assembly — no CDN, no internet required.
 - **Android** → starts a native `Activity` hosting a `WebView`.
 - Each page has **Save** and **Discard** actions.
 
-Target frameworks: `net9.0` (platform-neutral, for unit testing), `net9.0-android`, `net9.0-ios`.
+Target frameworks: `net10.0` (platform-neutral, for unit testing), `net10.0-android`, `net10.0-ios`.
 
 ## Repository layout
 
 ```
-src/Omnicasa.HtmlEditor          The library (net9.0; net9.0-android; net9.0-ios)
+src/Omnicasa.HtmlEditor          The library (net10.0; net10.0-android; net10.0-ios)
 samples/Omnicasa.HtmlEditor.Sample   A MAUI app that opens the editor (C# UI, no XAML)
-tests/Omnicasa.HtmlEditor.Tests      xUnit tests for the shared logic (net9.0)
+tests/Omnicasa.HtmlEditor.Tests      xUnit tests for the shared logic (net10.0)
 Directory.Build.props + stylecop.json   Omnicasa.Analyzers conventions, applied solution-wide
-global.json                       Pins the .NET SDK to 9.0.313
+global.json                       Pins the .NET SDK to 10.0.201
 ```
 
 ## The whole API
@@ -191,12 +191,12 @@ nothing touches the network.
 
 ## Building & testing
 
-The SDK is pinned to **9.0.313** via `global.json`.
+The SDK is pinned to **10.0.201** via `global.json`.
 
 ```bash
 dotnet build Omnicasa.HtmlEditor.slnx -c Release          # library + sample + tests
 dotnet test  tests/Omnicasa.HtmlEditor.Tests              # run the unit tests
-dotnet build samples/Omnicasa.HtmlEditor.Sample -f net9.0-android   # run the sample
+dotnet build samples/Omnicasa.HtmlEditor.Sample -f net10.0-android   # run the sample
 ```
 
 ### Sample app
@@ -206,7 +206,7 @@ with an "Open editor" button that calls `HtmlEditor.OpenEditorAsync` and shows t
 
 ### Tests
 
-`tests/Omnicasa.HtmlEditor.Tests` (xUnit, `net9.0`) covers the shared logic — Quill/CSS inlining,
+`tests/Omnicasa.HtmlEditor.Tests` (xUnit, `net10.0`) covers the shared logic — Quill/CSS inlining,
 token replacement, base64 encoding of initial HTML, placeholder escaping, option defaults, and the
 platform-neutral fast-fail. The library exposes its internals to the test assembly via
 `InternalsVisibleTo`.

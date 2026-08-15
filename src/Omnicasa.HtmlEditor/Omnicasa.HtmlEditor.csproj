@@ -1,10 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net9.0;net9.0-android;net9.0-ios</TargetFrameworks>
+    <TargetFrameworks>net10.0;net10.0-android;net10.0-ios</TargetFrameworks>
     <UseMaui>true</UseMaui>
-    <!-- Pin to a .NET 9 compatible MAUI so the library stays on net9 even when built by a .NET 10 SDK. -->
-    <MauiVersion>9.0.120</MauiVersion>
+    <!-- Matches the MAUI the consuming apps are on, so the package never drags a second one in. -->
+    <MauiVersion>10.0.80</MauiVersion>
     <SingleProject>true</SingleProject>
     <OutputType>Library</OutputType>
     <Nullable>enable</Nullable>
@@ -45,7 +45,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Maui.Controls" Version="9.0.120" />
+    <PackageReference Include="Microsoft.Maui.Controls" Version="10.0.80" />
   </ItemGroup>
 
   <!-- Files shipped inside the .nupkg. -->
