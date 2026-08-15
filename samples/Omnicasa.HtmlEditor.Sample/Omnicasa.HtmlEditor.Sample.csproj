@@ -1,10 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net9.0-android;net9.0-ios</TargetFrameworks>
+    <TargetFrameworks>net10.0-android;net10.0-ios</TargetFrameworks>
     <OutputType>Exe</OutputType>
     <UseMaui>true</UseMaui>
-    <MauiVersion>9.0.120</MauiVersion>
+    <MauiVersion>10.0.80</MauiVersion>
     <SingleProject>true</SingleProject>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -19,13 +19,19 @@
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">21.0</SupportedOSPlatformVersion>
   </PropertyGroup>
 
+  <!-- The Android ABIs this sample supports. Note this alone does not stop the net10 SDK from
+       computing a host RuntimeIdentifier in its targets — see the CI build step for that. -->
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0-android'">
+    <RuntimeIdentifiers>android-arm64;android-x64</RuntimeIdentifiers>
+  </PropertyGroup>
+
   <ItemGroup>
     <MauiIcon Include="Resources\AppIcon\appicon.svg" />
     <MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#512BD4" BaseSize="128,128" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Maui.Controls" Version="9.0.120" />
+    <PackageReference Include="Microsoft.Maui.Controls" Version="10.0.80" />
   </ItemGroup>
 
   <ItemGroup>

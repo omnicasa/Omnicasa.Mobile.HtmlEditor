@@ -4,13 +4,13 @@ This is a step-by-step manual for the **first** upload of the package to
 [nuget.org](https://www.nuget.org). Later releases are just steps 4–6 with a new version.
 
 The package is produced from `src/Omnicasa.HtmlEditor/Omnicasa.HtmlEditor.csproj` and contains
-three target frameworks (`net9.0`, `net9.0-android`, `net9.0-ios`) with the Quill assets embedded.
+three target frameworks (`net10.0`, `net10.0-android`, `net10.0-ios`) with the Quill assets embedded.
 
 ---
 
 ## 1. Prerequisites
 
-- The .NET SDK pinned by `global.json` (**9.0.313**). Check with `dotnet --version`.
+- The .NET SDK pinned by `global.json` (**10.0.201**). Check with `dotnet --version`.
 - A free account on <https://www.nuget.org> (sign in with a Microsoft account).
 - The account must be allowed to publish the `Omnicasa.HtmlEditor` ID.
   The `Omnicasa.*` prefix is already used by [`Omnicasa.Analyzers`](https://www.nuget.org/packages/Omnicasa.Analyzers).
@@ -69,7 +69,7 @@ Optional sanity check of the contents:
 unzip -l artifacts/Omnicasa.HtmlEditor.1.0.0.nupkg
 ```
 
-You should see `lib/net9.0/…`, `lib/net9.0-android35.0/…`, `lib/net9.0-ios18.0/…`, plus `README.md`.
+You should see `lib/net10.0/…`, `lib/net10.0-android36.0/…`, `lib/net10.0-ios26.0/…`, plus `README.md`.
 
 ---
 
@@ -139,7 +139,7 @@ Two workflows live in `.github/workflows/`:
 | `pr-build-test.yml` | Pull request → `main` | Builds the library (all TFMs) + sample (Android) and runs the unit tests. |
 | `publish-nuget.yml` | Push/merge to `main` touching `src/**` | Tests, packs with version `yyyy.mm.dd.<run_number>`, pushes to NuGet.org, and creates a `v<version>` GitHub Release with the `.nupkg` attached. |
 
-Both run on **macOS** runners (required because the library multi-targets `net9.0-ios`) and use the
+Both run on **macOS** runners (required because the library multi-targets `net10.0-ios`) and use the
 SDK pinned by `global.json`.
 
 **One-time setup for the publish workflow:**
