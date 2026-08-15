@@ -183,6 +183,40 @@ public class EditorHtmlBuilderTests
     }
 
     [Fact]
+    public void TagConfig_CarriesThePreviewValue()
+    {
+        var json = EditorHtmlBuilder.BuildTagConfig(new HtmlEditorOptions
+        {
+            Tags =
+            {
+                new HtmlEditorTag
+                {
+                    Label = "Contact name",
+                    Value = "ContactName",
+                    InsertText = "[*ContactName*]",
+                    PreviewValue = "John Doe",
+                },
+            },
+        });
+
+        Assert.Contains("\"preview\":\"John Doe\"", json);
+
+        // The document still carries the token: a preview value is shown, never saved.
+        Assert.Contains("\"text\":\"[*ContactName*]\"", json);
+    }
+
+    [Fact]
+    public void TagConfig_WithoutPreviewValue_SendsAnEmptyOne()
+    {
+        var json = EditorHtmlBuilder.BuildTagConfig(new HtmlEditorOptions
+        {
+            Tags = { new HtmlEditorTag { Label = "Contact name", Value = "ContactName" } },
+        });
+
+        Assert.Contains("\"preview\":\"\"", json);
+    }
+
+    [Fact]
     public void TagConfig_WithNoTags_IsAnEmptyList()
     {
         var json = EditorHtmlBuilder.BuildTagConfig(new HtmlEditorOptions());

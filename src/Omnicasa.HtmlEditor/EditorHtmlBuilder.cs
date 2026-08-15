@@ -86,6 +86,8 @@ internal static class EditorHtmlBuilder
             AppendJsonString(sb, tag.EffectiveText);
             sb.Append(",\"group\":");
             AppendJsonString(sb, tag.Group ?? string.Empty);
+            sb.Append(",\"preview\":");
+            AppendJsonString(sb, tag.PreviewValue ?? string.Empty);
             sb.Append('}');
         }
 
