@@ -7,6 +7,8 @@ using Android.Widget;
 using AndroidX.Core.View;
 using AGraphics = Android.Graphics;
 using Button = Android.Widget.Button;
+using ImageButton = Android.Widget.ImageButton;
+using ImageView = Android.Widget.ImageView;
 using LinearLayout = Android.Widget.LinearLayout;
 using TextView = Android.Widget.TextView;
 using View = Android.Views.View;
@@ -25,6 +27,15 @@ namespace Omnicasa.HtmlEditor;
     WindowSoftInputMode = SoftInput.AdjustResize)]
 internal sealed class EditorActivity : Activity
 {
+    /// <summary>The bar and page surface, matching the document's own chrome.</summary>
+    private static readonly AGraphics.Color SurfaceColor = AGraphics.Color.ParseColor("#FAFAFA");
+
+    /// <summary>Title colour, matching the page.</summary>
+    private static readonly AGraphics.Color BarTitleColor = AGraphics.Color.ParseColor("#1A1A1A");
+
+    /// <summary>Action colour, the same blue the document's own buttons use.</summary>
+    private static readonly AGraphics.Color TintColor = AGraphics.Color.ParseColor("#0A66FF");
+
     private WebView webView = null!;
     private bool completed;
 
@@ -56,6 +67,14 @@ internal sealed class EditorActivity : Activity
         // Drive insets ourselves so the bars do not overlap the content (edge-to-edge on Android 15+).
         WindowCompat.SetDecorFitsSystemWindows(Window!, false);
 
+        // The page is light whatever the app or the device is set to, so the status bar icons have
+        // to be dark — white-on-white left them invisible over this page's own bar.
+        var insetsController = WindowCompat.GetInsetsController(Window!, Window!.DecorView!);
+        if (insetsController != null)
+        {
+            insetsController.AppearanceLightStatusBars = true;
+        }
+
         var options = EditorBridge.Options;
 
         var root = new LinearLayout(this) { Orientation = Orientation.Vertical };
@@ -71,6 +90,10 @@ internal sealed class EditorActivity : Activity
         settings.JavaScriptEnabled = true;
         settings.DomStorageEnabled = true;
         webView.SetBackgroundColor(AGraphics.Color.White);
+
+        // The page posts here when a caller-supplied action is tapped. Safe to expose: the
+        // document is one we built ourselves from embedded assets and never loads remote script.
+        webView.AddJavascriptInterface(new ActionBridge(this), EditorActionRunner.BridgeName);
         root.AddView(webView);
 
         SetContentView(root);
@@ -108,15 +131,24 @@ internal sealed class EditorActivity : Activity
             LayoutParameters = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MatchParent, ViewGroup.LayoutParams.WrapContent),
         };
-        bar.SetBackgroundColor(AGraphics.Color.ParseColor("#FAFAFA"));
+        bar.SetBackgroundColor(SurfaceColor);
         bar.SetGravity(GravityFlags.CenterVertical);
         var pad = Dp(8);
         bar.SetPadding(pad, pad, pad, pad);
 
-        var discard = new Button(this) { Text = options.DiscardText };
-        discard.SetAllCaps(false);
-        discard.Click += (_, _) => Finish(HtmlEditorResult.Discard());
-        bar.AddView(discard);
+        // A back arrow rather than a word, so leaving this page looks like leaving any other.
+        // The discard text stays as its accessibility name.
+        var back = new ImageButton(this)
+        {
+            LayoutParameters = new LinearLayout.LayoutParams(Dp(40), Dp(40)),
+            ContentDescription = options.DiscardText,
+        };
+        back.SetImageDrawable(SystemBackIndicator() ?? new BackArrowDrawable(BarTitleColor, Dp(2)));
+        back.SetBackgroundColor(AGraphics.Color.Transparent);
+        back.SetScaleType(ImageView.ScaleType.FitCenter);
+        back.SetPadding(Dp(10), Dp(10), Dp(10), Dp(10));
+        back.Click += (_, _) => Finish(HtmlEditorResult.Discard());
+        bar.AddView(back);
 
         var title = new TextView(this)
         {
@@ -124,18 +156,106 @@ internal sealed class EditorActivity : Activity
             LayoutParameters = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f),
             Gravity = GravityFlags.Center,
         };
-        title.SetTextColor(AGraphics.Color.ParseColor("#1A1A1A"));
+        title.SetTextColor(BarTitleColor);
         title.SetTextSize(Android.Util.ComplexUnitType.Sp, 17);
+        title.SetTypeface(null, AGraphics.TypefaceStyle.Bold);
         title.SetSingleLine(true);
         bar.AddView(title);
 
         var save = new Button(this) { Text = options.SaveText };
         save.SetAllCaps(false);
-        save.SetTextColor(AGraphics.Color.ParseColor("#0A66FF"));
+        save.SetTextColor(TintColor);
+        save.SetBackgroundColor(AGraphics.Color.Transparent);
         save.Click += (_, _) => SaveAndFinish();
         bar.AddView(save);
 
         return bar;
+    }
+
+    /// <summary>
+    /// The platform's own up indicator, tinted to this bar.
+    /// </summary>
+    /// <returns>The themed drawable, or <c>null</c> when the theme declares none.</returns>
+    /// <remarks>
+    /// Read from the theme rather than drawn, so the arrow is whatever this Android version and
+    /// this device's theme say "back" looks like — the point of a back button is that it matches
+    /// every other one on the device, not the one on the other platform.
+    /// </remarks>
+    private Android.Graphics.Drawables.Drawable? SystemBackIndicator()
+    {
+        try
+        {
+            var value = new Android.Util.TypedValue();
+            var resolved = Theme?.ResolveAttribute(
+                Android.Resource.Attribute.HomeAsUpIndicator, value, true) == true;
+            if (!resolved || value.ResourceId == 0)
+            {
+                return null;
+            }
+
+            var drawable = AndroidX.Core.Content.ContextCompat.GetDrawable(this, value.ResourceId);
+            if (drawable == null)
+            {
+                return null;
+            }
+
+            // Mutate first: the theme hands back a shared instance, and tinting it in place would
+            // recolour every other use of the same drawable in the host app.
+            var tinted = AndroidX.Core.Graphics.Drawable.DrawableCompat.Wrap(drawable.Mutate());
+            AndroidX.Core.Graphics.Drawable.DrawableCompat.SetTint(tinted, BarTitleColor);
+            return tinted;
+        }
+        catch (Java.Lang.Exception)
+        {
+            // A theme without the attribute is not an error; the fallback covers it.
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Fallback back arrow, for a theme that declares no up indicator. Drawn rather than shipped:
+    /// a drawable resource in a library has to be merged into the host app's resources.
+    /// </summary>
+    private sealed class BackArrowDrawable : Android.Graphics.Drawables.Drawable
+    {
+        private readonly AGraphics.Paint paint;
+
+        public BackArrowDrawable(AGraphics.Color color, float strokeWidth)
+        {
+            paint = new AGraphics.Paint(AGraphics.PaintFlags.AntiAlias)
+            {
+                Color = color,
+                StrokeWidth = strokeWidth,
+                StrokeCap = AGraphics.Paint.Cap.Round,
+                StrokeJoin = AGraphics.Paint.Join.Round,
+            };
+            paint.SetStyle(AGraphics.Paint.Style.Stroke);
+        }
+
+        public override int Opacity => (int)AGraphics.Format.Translucent;
+
+        public override void Draw(AGraphics.Canvas canvas)
+        {
+            // An arrow, not a chevron: Android points back with a shaft and a head.
+            var bounds = Bounds;
+            float midY = bounds.CenterY();
+            float left = bounds.Left + (bounds.Width() * 0.18f);
+            float right = bounds.Right - (bounds.Width() * 0.18f);
+            float reach = bounds.Height() * 0.20f;
+
+            using var path = new AGraphics.Path();
+            path.MoveTo(left, midY);
+            path.LineTo(right, midY);
+            path.MoveTo(left + reach, midY - reach);
+            path.LineTo(left, midY);
+            path.LineTo(left + reach, midY + reach);
+            canvas.DrawPath(path, paint);
+        }
+
+        public override void SetAlpha(int alpha) => paint.Alpha = alpha;
+
+        public override void SetColorFilter(AGraphics.ColorFilter? colorFilter) =>
+            paint.SetColorFilter(colorFilter);
     }
 
     private void SaveAndFinish()
@@ -162,6 +282,34 @@ internal sealed class EditorActivity : Activity
     }
 
     private int Dp(int value) => (int)(value * Resources!.DisplayMetrics!.Density);
+
+    /// <summary>Runs a caller action posted by the page and hands the answer back to it.</summary>
+    private async void RunAction(string? payload)
+    {
+        var script = await EditorActionRunner.RunAsync(EditorBridge.Options, payload);
+
+        // Back to the UI thread: the post arrives on the WebView's JS thread, and evaluating a
+        // script is only legal on the thread the view was created on.
+        RunOnUiThread(() =>
+        {
+            if (!completed)
+            {
+                webView.EvaluateJavascript(script, null);
+            }
+        });
+    }
+
+    /// <summary>Receives <c>window.ocAction.post(...)</c>.</summary>
+    private sealed class ActionBridge : Java.Lang.Object
+    {
+        private readonly EditorActivity owner;
+
+        public ActionBridge(EditorActivity owner) => this.owner = owner;
+
+        [Java.Interop.Export("post")]
+        [global::Android.Webkit.JavascriptInterface]
+        public void Post(string payload) => owner.RunAction(payload);
+    }
 
     private sealed class JsResultCallback : Java.Lang.Object, IValueCallback
     {
