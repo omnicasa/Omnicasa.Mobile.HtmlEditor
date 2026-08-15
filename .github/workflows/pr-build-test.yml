@@ -2,7 +2,7 @@ name: PR · Build & Test
 
 # Runs on every pull request targeting main: compiles the library (all target
 # frameworks) and the sample, and runs the unit tests. macOS is required because
-# the library multi-targets net9.0-ios.
+# the library multi-targets net10.0-ios.
 on:
   pull_request:
     branches: [ main ]
@@ -32,7 +32,7 @@ jobs:
       - name: Restore
         run: dotnet restore Omnicasa.HtmlEditor.slnx
 
-      - name: Build library (net9.0 · android · ios)
+      - name: Build library (net10.0 · android · ios)
         run: >
           dotnet build src/Omnicasa.HtmlEditor/Omnicasa.HtmlEditor.csproj
           -c Release --no-restore
@@ -40,7 +40,7 @@ jobs:
       - name: Build sample (Android)
         run: >
           dotnet build samples/Omnicasa.HtmlEditor.Sample/Omnicasa.HtmlEditor.Sample.csproj
-          -f net9.0-android -c Release --no-restore
+          -f net10.0-android -c Release --no-restore
 
       - name: Test
         run: >
