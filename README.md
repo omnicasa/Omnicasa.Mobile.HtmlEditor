@@ -90,6 +90,19 @@ var result = await HtmlEditor.OpenEditorAsync(new HtmlEditorOptions
 The library never fetches tags and never invents a syntax — the caller owns both, so the same
 editor serves merge fields, shortcodes, or anything else.
 
+**Preview values.** Give a tag a `PreviewValue` — what it resolves to for the reader this message
+is for — and the chip shows that instead of the field's name, so the writer sees the message as it
+will arrive:
+
+```csharp
+new HtmlEditorTag { Label = "Contact name", Value = "ContactName",
+                    InsertText = "[*ContactName*]", PreviewValue = "Jan Peeters" }
+```
+
+Display only. The document still holds `InsertText`, and that is what `result.Html` returns — a
+preview value can never be saved into a template, which would freeze one reader's details into a
+message meant for many. Tags with no known value keep showing their label.
+
 While editing, a tag shows as an atomic **chip** carrying its label: one backspace removes the
 whole thing, so a half-deleted tag can never be saved. `result.Html` contains the raw
 `InsertText` again — the chip markup is scaffolding and never reaches the caller. Tags already
@@ -156,7 +169,7 @@ or a `Label`.
 |------|---------|
 | `HtmlEditor.OpenEditorAsync(...)` | Opens the native editor page and awaits the result. |
 | `HtmlEditorOptions` | `InitialHtml`, `Title`, `Placeholder`, `SaveText`, `DiscardText`, `Tags` (+ its four labels), `Actions`, `OnAction`. |
-| `HtmlEditorTag` | `Label`, `Value`, `Group`, `InsertText`. |
+| `HtmlEditorTag` | `Label`, `Value`, `Group`, `InsertText`, `PreviewValue`. |
 | `HtmlEditorAction` | `Id`, `Label`, `Icon`, `IconOnly`. |
 | `HtmlEditorActionContext` | `ActionId`, `Html` — what was tapped, and the document. |
 | `HtmlEditorActionResult` | `Replace(html)`, `Insert(html)`, `None`. |

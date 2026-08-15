@@ -154,7 +154,9 @@
   }
   @keyframes oc-spin { to { transform: rotate(360deg); } }
 
-  /* An inserted tag: one atomic chip carrying its label, never its raw syntax. */
+  /* An inserted tag: one atomic chip carrying its label — or the value it resolves to — but
+     never its raw syntax. It stays tinted either way, because a resolved value that looked like
+     ordinary text would read as something typed for one reader rather than a field. */
   .ql-editor span.oc-tag {
     display: inline-block;
     padding: 1px 9px;
@@ -166,6 +168,11 @@
     font-weight: 500;
     line-height: 1.5;
     white-space: nowrap;
+    /* A resolved value can be a whole address; keep one field from taking the paragraph. */
+    max-width: 16em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: bottom;
     -webkit-user-select: none;
     user-select: none;
   }
@@ -517,6 +524,16 @@
       byText[tag.text] = tag;
       texts.push(tag.text);
     });
+
+    /**
+     * What a chip reads as: the value this tag resolves to for this reader when the caller knows
+     * it, otherwise its name. One place decides, so a tag that arrived with the template and one
+     * inserted just now can never disagree.
+     */
+    function chipText(tag, fallback) {
+      if (!tag) return fallback;
+      return tag.preview || tag.label || fallback;
+    }
     // Longest first, so a tag that is a prefix of another one does not win the match.
     texts.sort(function (a, b) { return b.length - a.length; });
     var tagPattern = texts.length ? texts.map(escapeRe).join('|') : null;
@@ -545,7 +562,7 @@
         while ((match = re.exec(text)) !== null) {
           if (match.index > last) out.insert(text.slice(last, match.index), op.attributes);
           var tag = byText[match[0]];
-          out.insert({ 'oc-tag': { text: match[0], label: tag ? tag.label : match[0] } }, op.attributes);
+          out.insert({ 'oc-tag': { text: match[0], label: chipText(tag, match[0]) } }, op.attributes);
           last = match.index + match[0].length;
         }
 
@@ -587,7 +604,9 @@
       var out = [];
       tags.forEach(function (tag) {
         if (q) {
-          var hay = ((tag.label || '') + ' ' + (tag.value || '')).toLowerCase();
+          // The resolved value is searchable too: "John" should find the field that says John.
+          var hay = ((tag.label || '') + ' ' + (tag.value || '') + ' ' + (tag.preview || ''))
+            .toLowerCase();
           if (hay.indexOf(q) === -1) return;
         }
 
@@ -627,7 +646,9 @@
 
         var value = document.createElement('span');
         value.className = 'tag-row-value';
-        value.textContent = item.tag.text;
+        // What it will say once sent, when that is known — more use than the token here, and the
+        // token is still what the row inserts.
+        value.textContent = item.tag.preview || item.tag.text;
         row.appendChild(value);
 
         row.addEventListener('click', function () { pick(item.tag); });
@@ -671,7 +692,8 @@
       // The model is updated before anything is focused: insertEmbed does not need the editor to
       // be first responder, so there is no window where a late focus can move the caret first.
       if (range.length) quill.deleteText(index, range.length, Quill.sources.USER);
-      quill.insertEmbed(index, 'oc-tag', { text: tag.text, label: tag.label || tag.text }, Quill.sources.USER);
+      quill.insertEmbed(
+        index, 'oc-tag', { text: tag.text, label: chipText(tag, tag.text) }, Quill.sources.USER);
 
       lastRange = { index: index + 1, length: 0 };
       quill.setSelection(index + 1, 0, Quill.sources.USER);

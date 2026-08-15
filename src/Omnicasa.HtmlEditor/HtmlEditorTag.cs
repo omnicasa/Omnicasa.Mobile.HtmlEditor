@@ -28,6 +28,18 @@ public sealed class HtmlEditorTag
     /// </summary>
     public string? InsertText { get; set; }
 
+    /// <summary>
+    /// Gets or sets what this tag resolves to for the reader this message is being written for —
+    /// "John Doe" rather than "Contact name". When set, the chip shows it, so the writer sees the
+    /// message as it will arrive.
+    /// </summary>
+    /// <remarks>
+    /// Display only. The document still carries <see cref="InsertText"/>, and that is what
+    /// <see cref="HtmlEditorResult.Html"/> returns — a preview value can never be saved into a
+    /// template, which would freeze one reader's details into a message meant for many.
+    /// </remarks>
+    public string? PreviewValue { get; set; }
+
     /// <summary>Gets the text actually written into the document.</summary>
     internal string EffectiveText => string.IsNullOrEmpty(InsertText) ? Value : InsertText!;
 
