@@ -40,7 +40,7 @@ jobs:
       - name: Build sample (Android)
         run: >
           dotnet build samples/Omnicasa.HtmlEditor.Sample/Omnicasa.HtmlEditor.Sample.csproj
-          -f net10.0-android -c Release --no-restore
+          -f net10.0-android -c Release --no-restore -p:RuntimeIdentifier=android-arm64
 
       - name: Test
         run: >
