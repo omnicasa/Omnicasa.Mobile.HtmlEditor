@@ -103,6 +103,17 @@ Display only. The document still holds `InsertText`, and that is what `result.Ht
 preview value can never be saved into a template, which would freeze one reader's details into a
 message meant for many. Tags with no known value keep showing their label.
 
+**Tags the caller did not list.** A document usually holds tags no endpoint advertises — one API
+says which fields may be inserted, another renders fields it never lists. Give `TagPattern` a
+JavaScript regular expression for what a tag looks like and every match reads as a field:
+
+```csharp
+TagPattern = @"\[\*[^*\]]+\*\]",
+```
+
+Without it only listed tags are recognised and the rest stay raw `[*LIKE_THIS*]` text in front of
+the writer. An unlisted tag shows its name, stripped of the surrounding syntax.
+
 While editing, a tag shows as an atomic **chip** carrying its label: one backspace removes the
 whole thing, so a half-deleted tag can never be saved. `result.Html` contains the raw
 `InsertText` again — the chip markup is scaffolding and never reaches the caller. Tags already
