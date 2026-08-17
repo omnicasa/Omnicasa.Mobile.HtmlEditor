@@ -40,6 +40,18 @@ public sealed class HtmlEditorOptions
     public string TagEmptyText { get; set; } = "No fields found";
 
     /// <summary>
+    /// Gets or sets a JavaScript regular expression matching what a tag looks like in this
+    /// caller's documents — for example <c>\[\*[^*\]]+\*\]</c>.
+    /// </summary>
+    /// <remarks>
+    /// Without it, only tags the caller listed in <see cref="Tags"/> are recognised, and anything
+    /// else in the document stays raw <c>[*LIKE_THIS*]</c> text. A document usually knows tags the
+    /// caller does not — one endpoint lists the fields you may insert, another renders fields it
+    /// never advertises — and those still have to read as fields rather than as syntax.
+    /// </remarks>
+    public string? TagPattern { get; set; }
+
+    /// <summary>
     /// Gets or sets extra toolbar buttons the app provides — Translate, Clear, Rewrite, anything.
     /// Each one runs <see cref="OnAction"/>; without a handler they are not rendered, since a
     /// button that cannot do anything is worse than no button.

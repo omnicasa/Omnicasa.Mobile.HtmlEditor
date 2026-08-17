@@ -179,7 +179,7 @@
 
   /* Tap-outside to close. Transparent, and it must not take focus — closing the picker may
      never cost the keyboard. */
-  #tag-backdrop { position: absolute; inset: 0; z-index: 9; display: none; }
+  #tag-backdrop { position: absolute; inset: 0; z-index: 29; display: none; }
   #tag-backdrop.open { display: block; }
 
   /* A card resting on the bar it belongs to, which is itself resting on the keyboard — so the
@@ -188,13 +188,15 @@
      labels out to nearly nothing, and a menu has to be readable before it is pretty. It gets the
      elevated surface instead — near-opaque, blurred only enough to belong to the same material. */
   #tag-panel {
-    position: absolute; z-index: 10;
+    /* Above the toolbar's own layer: while the picker is open the bar cannot be used anyway, and
+       standing off it wasted a third of the space in front of a list of hundreds. */
+    position: absolute; z-index: 30;
     left: var(--bar-inset); right: var(--bar-inset);
-    bottom: calc(var(--bar-inset) * 2 + var(--safe-bottom) + var(--bar-height));
+    bottom: calc(var(--bar-inset) + var(--safe-bottom));
     display: none; flex-direction: column;
-    /* Never taller than the space above the keyboard minus a few lines of the message: the
-       point of inserting at the caret is being able to see where it lands. */
-    max-height: min(340px, calc(100% - 96px - var(--bar-height)));
+    /* A sheet, not a card. Choosing among a few hundred fields is the whole task while it is
+       open, so it takes the room instead of showing four rows through a keyhole. */
+    max-height: calc(100% - var(--bar-inset) * 2);
     background: rgba(255, 255, 255, 0.94);
     -webkit-backdrop-filter: blur(30px) saturate(180%);
     backdrop-filter: blur(30px) saturate(180%);
@@ -211,43 +213,58 @@
   #tag-panel.open { display: flex; }
   #tag-head {
     display: flex; align-items: center; gap: 8px;
-    padding: 8px 10px 4px;
+    padding: 6px 6px 2px 16px;
   }
-  #tag-title { flex: 1 1 auto; font-size: 14px; font-weight: 600; color: #1a1a1a; }
+  #tag-title { flex: 1 1 auto; font-size: 17px; font-weight: 600; color: #1a1a1a; }
   #tag-close {
     display: flex; align-items: center; justify-content: center;
-    flex: 0 0 auto; width: 30px; height: 30px;
-    margin: -4px -4px -4px 0;          /* grows the tap target without moving the icon */
-    padding: 0; border: none; border-radius: 8px;
+    /* 44px: the smallest thing a thumb hits reliably. */
+    flex: 0 0 auto; width: 44px; height: 44px;
+    padding: 0; border: none; border-radius: 22px;
     background: transparent; color: #6b7280; cursor: pointer;
   }
   #tag-close:active { background: #f2f3f5; }
+  #tag-searchrow { position: relative; display: flex; align-items: center; }
+  #tag-clear {
+    position: absolute; right: 14px;
+    display: flex; align-items: center; justify-content: center;
+    width: 44px; height: 44px; padding: 0;
+    border: none; background: transparent; color: #6b7280; cursor: pointer;
+  }
   #tag-search {
     -webkit-appearance: none; appearance: none;
-    margin: 4px 10px 6px;
-    padding: 0 12px; height: 36px;
-    font-size: 15px; color: #1a1a1a;
-    border: none; border-radius: 12px;
+    flex: 1 1 auto;
+    margin: 4px 12px 8px;
+    padding: 0 44px 0 14px; height: 48px;
+    /* 16px keeps iOS from zooming the page when this takes focus. */
+    font-size: 16px; color: #1a1a1a;
+    border: none; border-radius: 14px;
     /* The system fill: a tint of the surface rather than a flat grey, so it sits in the glass. */
     background: rgba(118, 118, 128, 0.12);
   }
-  #tag-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 4px 8px 10px; -webkit-overflow-scrolling: touch; }
+  #tag-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 2px 6px 12px; -webkit-overflow-scrolling: touch; }
   .tag-group {
-    font-size: 11px; font-weight: 700; letter-spacing: 0.5px;
+    font-size: 12px; font-weight: 700; letter-spacing: 0.5px;
     text-transform: uppercase; color: #4b5563;
-    padding: 12px 8px 4px;
+    padding: 14px 12px 6px;
   }
   .tag-row {
     display: flex; align-items: center; gap: 10px; width: 100%;
-    padding: 10px 8px;
+    min-height: 52px;
+    padding: 8px 12px;
     border: none; border-radius: 12px;
     background: transparent;
-    font-size: 15px; text-align: left; cursor: pointer;
+    font-size: 16px; text-align: left; cursor: pointer;
   }
   .tag-row:active { background: var(--tint-fill); }
-  .tag-row-label { flex: 1 1 auto; font-weight: 600; color: #1a1a1a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tag-row-group {
+    margin-left: 8px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.3px;
+    text-transform: uppercase; color: #9aa0a6;
+  }
+  .tag-row-label { flex: 1 1 auto; font-size: 16px; font-weight: 600; color: #1a1a1a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   /* The raw token, so two same-named tags from different groups can be told apart. */
-  .tag-row-value { flex: 0 1 auto; max-width: 42%; font-size: 11px; color: #9aa0a6; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tag-row-value { flex: 0 1 auto; max-width: 42%; font-size: 13px; color: #9aa0a6; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #tag-empty { display: none; padding: 24px; text-align: center; font-size: 14px; color: #6b7280; }
   #tag-empty.open { display: block; }
 </style>
@@ -263,13 +280,22 @@
           <!-- Drawn, not typed: the ✕ character needs a font WebKit does not always have, and
                a missing glyph leaves the button looking empty. -->
           <button type="button" id="tag-close" aria-label="Close">
-            <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" focusable="false">
+            <svg viewBox="0 0 16 16" width="19" height="19" aria-hidden="true" focusable="false">
               <path d="M3.5 3.5 L12.5 12.5 M12.5 3.5 L3.5 12.5"
                     fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
             </svg>
           </button>
         </div>
-        <input type="search" id="tag-search" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+        <div id="tag-searchrow">
+          <input type="search" id="tag-search" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+          <button type="button" id="tag-clear" aria-label="Clear" hidden>
+            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false">
+              <circle cx="8" cy="8" r="7" fill="currentColor" opacity="0.25"/>
+              <path d="M5.5 5.5 L10.5 10.5 M10.5 5.5 L5.5 10.5" fill="none" stroke="currentColor"
+                    stroke-width="1.6" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
         <div id="tag-list"></div>
         <div id="tag-empty"></div>
       </div>
@@ -359,6 +385,7 @@
     var list = document.getElementById('tag-list');
     var empty = document.getElementById('tag-empty');
     var search = document.getElementById('tag-search');
+    var clearButton = document.getElementById('tag-clear');
     var button = document.getElementById('tag-button');
 
     // No tags means no feature: the button goes away before Quill ever sees it, so an editor
@@ -531,12 +558,24 @@
      * inserted just now can never disagree.
      */
     function chipText(tag, fallback) {
-      if (!tag) return fallback;
-      return tag.preview || tag.label || fallback;
+      if (tag) return tag.preview || tag.label || fallback;
+
+      // A tag the caller never listed: show its name without the surrounding syntax, so it reads
+      // as a field rather than as punctuation. The raw text is still what gets saved.
+      return String(fallback).replace(/^[^\w]+|[^\w]+$/g, '') || fallback;
     }
     // Longest first, so a tag that is a prefix of another one does not win the match.
     texts.sort(function (a, b) { return b.length - a.length; });
-    var tagPattern = texts.length ? texts.map(escapeRe).join('|') : null;
+
+    /*
+     * What counts as a tag in this document.
+     *
+     * The caller's pattern when it gave one, because a document routinely holds tags the caller
+     * never listed — one endpoint says which fields may be inserted, another renders fields it
+     * does not advertise — and those must still read as fields rather than as raw syntax. Without
+     * a pattern only the listed tags are recognised, which is all the library can safely guess.
+     */
+    var tagPattern = config.pattern || (texts.length ? texts.map(escapeRe).join('|') : null);
 
     /**
      * Turns the known tags in a parsed document into chips.
@@ -598,26 +637,66 @@
 
     // --------------------------------------------------------- picker panel
 
+    /**
+     * Scores a tag against one search word, or -1 when it does not match.
+     *
+     * Ordered by how the writer is likely thinking: the name of the field first, then where it
+     * lives, then its token, then what it currently says. A field whose name STARTS with the word
+     * beats one that merely contains it, so typing "name" puts Name above Company name.
+     */
+    function scoreWord(tag, word) {
+      var label = (tag.label || '').toLowerCase();
+      var group = (tag.group || '').toLowerCase();
+      var token = (tag.value || '').toLowerCase();
+      var value = (tag.preview || '').toLowerCase();
+
+      if (label.indexOf(word) === 0) return 0;
+      if (label.indexOf(' ' + word) !== -1) return 1;   // start of any word in the label
+      if (label.indexOf(word) !== -1) return 2;
+      if (group.indexOf(word) !== -1) return 3;         // "person" lists the Person fields
+      if (token.indexOf(word) !== -1) return 4;
+      if (value.indexOf(word) !== -1) return 5;         // "peeters" finds the field saying it
+      return -1;
+    }
+
     function rows(query) {
       var q = (query || '').trim().toLowerCase();
-      var seen = {};
-      var out = [];
-      tags.forEach(function (tag) {
-        if (q) {
-          // The resolved value is searchable too: "John" should find the field that says John.
-          var hay = ((tag.label || '') + ' ' + (tag.value || '') + ' ' + (tag.preview || ''))
-            .toLowerCase();
-          if (hay.indexOf(q) === -1) return;
+
+      // Every word has to match something, so "person mail" narrows instead of widening.
+      var words = q ? q.split(/\s+/) : [];
+      var matched = [];
+
+      tags.forEach(function (tag, index) {
+        var worst = 0;
+        for (var i = 0; i < words.length; i++) {
+          var score = scoreWord(tag, words[i]);
+          if (score < 0) return;
+          if (score > worst) worst = score;
         }
 
-        var group = tag.group || '';
-        if (group && !seen[group]) {
+        matched.push({ tag: tag, score: worst, index: index });
+      });
+
+      // Stable within a rank, so an unsearched list stays in the order the caller gave.
+      matched.sort(function (a, b) {
+        return a.score === b.score ? a.index - b.index : a.score - b.score;
+      });
+
+      var seen = {};
+      var out = [];
+      matched.forEach(function (item) {
+        var group = item.tag.group || '';
+
+        // While searching the results are ranked across groups, so a heading would no longer
+        // describe what follows it; each row carries its own group instead.
+        if (!words.length && group && !seen[group]) {
           seen[group] = true;
           out.push({ group: group });
         }
 
-        out.push({ tag: tag });
+        out.push({ tag: item.tag, showGroup: words.length > 0 });
       });
+
       return out;
     }
 
@@ -642,6 +721,15 @@
         var label = document.createElement('span');
         label.className = 'tag-row-label';
         label.textContent = item.tag.label || item.tag.text;
+
+        // Ranked results are no longer under a heading, so each says where it came from.
+        if (item.showGroup && item.tag.group) {
+          var group = document.createElement('span');
+          group.className = 'tag-row-group';
+          group.textContent = item.tag.group;
+          label.appendChild(group);
+        }
+
         row.appendChild(label);
 
         var value = document.createElement('span');
@@ -659,9 +747,15 @@
     function openPanel() {
       lastRange = quill.getSelection() || lastRange;
       search.value = '';
+      updateClear();
       renderList('');
       panel.className = 'open';
       backdrop.className = 'open';
+
+      // Straight into the search box: with a few hundred fields, typing is how anyone finds one,
+      // and the keyboard is already up so nothing moves. The caret is safe — lastRange was just
+      // taken, and closing hands it back.
+      search.focus();
     }
 
     function closePanel() {
@@ -699,7 +793,21 @@
       quill.setSelection(index + 1, 0, Quill.sources.USER);
     }
 
-    search.addEventListener('input', function () { renderList(search.value); });
+    function updateClear() {
+      clearButton.hidden = !search.value;
+    }
+
+    search.addEventListener('input', function () {
+      updateClear();
+      renderList(search.value);
+    });
+
+    clearButton.addEventListener('click', function () {
+      search.value = '';
+      updateClear();
+      renderList('');
+      search.focus();
+    });
     document.getElementById('tag-close').addEventListener('click', closePanel);
     backdrop.addEventListener('click', closePanel);
 

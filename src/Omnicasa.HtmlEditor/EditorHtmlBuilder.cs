@@ -60,6 +60,8 @@ internal static class EditorHtmlBuilder
         AppendJsonString(sb, options.TagSearchPlaceholder);
         sb.Append(",\"emptyText\":");
         AppendJsonString(sb, options.TagEmptyText);
+        sb.Append(",\"pattern\":");
+        AppendJsonString(sb, options.TagPattern ?? string.Empty);
         sb.Append(",\"tags\":[");
 
         var first = true;
